@@ -153,145 +153,180 @@ function btn(x,y,w,h,text,color,cb){buttons.push({x,y,w,h,text,color,cb})}
 function drawDude(cx,cy,z){
   let s=z||1;let m=muscles;let ch=chars[characterIndex];
   let isF=ch.gender=='female';
-  let px=(screen==='home')?5:3; // 像素大小(首页更大)
-  let WID=24, HGT=40; // 网格
-  let grid=Array(HGT).fill().map(()=>Array(WID).fill(0)); // 0=透明
+  let WID=48, HGT=72; // 48x72像素网格
+  let px=(screen==='home')?Math.min(H*0.75/HGT,W*0.8/WID):Math.min(H*0.4/HGT,W*0.5/WID);
+  let grid=Array(HGT).fill().map(()=>Array(WID).fill(0));
 
-  // 辅助函数：填矩形
-  function box(x,y,w,h,val){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<HGT&&c>=0&&c<WID)grid[r][c]=val}
-  function skin(x,y,w,h){box(x,y,w,h,1)}
-  function hair(x,y,w,h){box(x,y,w,h,2)}
-  function cloth(x,y,w,h){box(x,y,w,h,3)}
-  function muscle(x,y,w,h){box(x,y,w,h,4)} // 肌肉线条(深色)
-  function eye(x,y,w,h){box(x,y,w,h,5)}
-  function shoe(x,y,w,h){box(x,y,w,h,6)}
+  function box(x,y,w,h,v){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<HGT&&c>=0&&c<WID)grid[r][c]=v}
+  function S(x,y,w,h){box(x,y,w,h,1)}  // skin
+  function H(x,y,w,h){box(x,y,w,h,2)}  // hair
+  function C(x,y,w,h){box(x,y,w,h,3)}  // cloth
+  function M(x,y,w,h){box(x,y,w,h,4)}  // muscle line
+  function E(x,y,w,h){box(x,y,w,h,5)}  // eye
+  function Sh(x,y,w,h){box(x,y,w,h,6)} // shoe
+  function Sk(x,y,w,h){box(x,y,w,h,7)} // skin shadow
 
   let cx2=Math.floor(WID/2);
-  // 缩放因子：肌肉越壮，部分区域越宽
-  let armGain=Math.floor(m.upper*0.12);
-  let chestGain=Math.floor(m.chest*0.1);
-  let legGain=Math.floor(m.legs*0.08);
-  let absGain=Math.floor(m.abs*0.08);
+  let ag=Math.floor(m.upper*0.25);  // arm growth
+  let cg=Math.floor(m.chest*0.2);   // chest growth
+  let lg=Math.floor(m.legs*0.16);   // leg growth
+  let abg=Math.floor(m.abs*0.16);
 
-  // === 腿 ===
-  let legTop=28,legH=10;
-  shoe(cx2-5,HGT-3,4,2); shoe(cx2+1,HGT-3,4,2);
-  skin(cx2-4,legTop,3+legGain,legH); skin(cx2+1,legTop,3+legGain,legH);
-  // 膝盖线
-  if(m.legs>15)muscle(cx2-4,legTop+3,3+legGain,1);muscle(cx2+1,legTop+3,3+legGain,1);
+  // === 鞋子 ===
+  Sh(cx2-9,HGT-6,9,4);Sh(cx2,HGT-6,9,4);
+  // === 小腿 ===
+  S(cx2-8,58,4+lg,10);S(cx2+4-lg,58,4+lg,10);
+  // 小腿肌肉轮廓
+  if(m.legs>15){M(cx2-8,60,4+lg,1);M(cx2+4-lg,60,4+lg,1)}
+  // === 大腿 ===
+  S(cx2-8,45,5+lg,14);S(cx2+3-lg,45,5+lg,14);
+  if(m.legs>30){M(cx2-8,48,5+lg,2);M(cx2+3-lg,48,5+lg,2)}
+  // === 膝关节 ===
+  Sk(cx2-8,57,5+lg,2);Sk(cx2+3-lg,57,5+lg,2);
 
   // === 短裤 ===
-  cloth(cx2-5,25,10,4);
+  C(cx2-10,41,20,6);
+  C(cx2-10,41,2,6);C(cx2+8,41,2,6); // 裤腿开口
 
   // === 身体 ===
-  let bodyW=6+chestGain,bodyH=12,bodyTop=13;
-  skin(cx2-bodyW,bodyTop,bodyW*2,bodyH);
+  let bw=10+cg,bh=22,bt=19;
+  S(cx2-bw,bt,bw*2,bh);
   // 上衣
-  cloth(cx2-bodyW,bodyTop,bodyW*2,Math.floor(bodyH*0.7));
+  C(cx2-bw,bt,bw*2,14);
+  // 领口
+  C(cx2-4,bt,8,2);
 
-  // 胸肌线
-  if(m.chest>5){muscle(cx2,bodyTop+2,1,3);muscle(cx2-2,bodyTop+1,1,1);muscle(cx2+1,bodyTop+1,1,1)}
-  if(m.chest>20){muscle(cx2-3,bodyTop+1,2,2);muscle(cx2+1,bodyTop+1,2,2)}
+  // 胸肌
+  if(m.chest>5){M(cx2,bt+5,1,6);M(cx2-4,bt+3,1,1);M(cx2+3,bt+3,1,1)} // 中间线
+  if(m.chest>15){M(cx2-2,bt+4,4,1);M(cx2-2,bt+5,4,1)} // 上胸阴影
+  if(m.chest>25){Sk(cx2-bw,bt+3,4,3);Sk(cx2+bw-3,bt+3,4,3)} // 侧胸阴影
+  if(m.chest>40){M(cx2-4,bt+8,2,1);M(cx2+2,bt+8,2,1);M(cx2-5,bt+9,1,2);M(cx2+4,bt+9,1,2)} // 下胸线
 
   // 腹肌
   if(m.abs>5){
-    let abRows=Math.floor(m.abs/12)+1;
-    for(let i=0;i<Math.min(abRows,6);i++){muscle(cx2-2,bodyTop+5+i*1,4+absGain,1);muscle(cx2,bodyTop+5+i*1,1,1)}
+    let abN=Math.min(6,1+Math.floor(m.abs/14));
+    for(let i=0;i<abN;i++){M(cx2-4,bt+14+i*2,8,1);M(cx2,bt+14+i*2,1,1)}
   }
-
   // 鲨鱼线
-  if(m.abs>40){
-    for(let r=0;r<4;r++){muscle(cx2-bodyW+r,bodyTop+6+r,1,1);muscle(cx2+bodyW-1-r,bodyTop+6+r,1,1)}
+  if(m.abs>35){
+    for(let i=0;i<4;i++){M(cx2-bw+i,bt+15+i,1,1);M(cx2+bw-1-i,bt+15+i,1,1)}
   }
 
   // === 手臂 ===
-  let armTop=bodyTop+2;
-  let armW=2+armGain,armH=10;
-  skin(cx2-bodyW-armW-1,armTop,armW,armH); // 左
-  // 挥斧动画
-  let up=((screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-4:0);
-  skin(cx2+bodyW+1,armTop+up,armW,armH);
+  let at=bt+4, aw=4+ag, ah=16;
+  // 左臂
+  S(cx2-bw-aw-2,at,aw,ah);
+  // 右臂
+  let up=((screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-8:0);
+  S(cx2+bw+2,at+up,aw,ah);
+  // 三角肌
+  if(m.upper>10){M(cx2-bw-aw-2,at+2,aw,2);M(cx2+bw+2,at+2+up,aw,2)}
   // 肱二头肌
-  if(m.upper>10){muscle(cx2-bodyW-armW-1,armTop+2,armW,2);muscle(cx2+bodyW+1,armTop+2+up,armW,2)}
-  if(m.upper>30){muscle(cx2-bodyW-armW,armTop+1,1,4);muscle(cx2+bodyW+armW,armTop+1+up,1,4)}
+  if(m.upper>20){Sk(cx2-bw-aw-1,at+4,aw-1,3);Sk(cx2+bw+3,at+4+up,aw-1,3);M(cx2-bw-aw-2,at+5,aw,1);M(cx2+bw+2,at+5+up,aw,1)}
+  if(m.upper>40){M(cx2-bw-aw-1,at+3,1,7);M(cx2+bw+aw,at+3+up,1,7)}
   // 前臂
-  skin(cx2-bodyW-armW,armTop+armH-1,armW+1,3);
-  skin(cx2+bodyW+1,armTop+armH-1+up,armW+1,3);
+  S(cx2-bw-aw-1,at+ah-2,aw+1,6);
+  S(cx2+bw+2,at+ah-2+up,aw+1,6);
+  // 前臂肌群
+  if(m.upper>25){M(cx2-bw-aw-2,at+ah,aw+1,1);M(cx2+bw+2,at+ah+up,aw+1,1)}
   // 拳头
-  skin(cx2-bodyW-armW-1,HGT-8,armW+1,2);
-  skin(cx2+bodyW+1,HGT-8+up,armW+1,2);
+  S(cx2-bw-aw-3,HGT-16,aw+2,5);
+  S(cx2+bw+3,HGT-16+up,aw+2,5);
 
-  // === 斧头(砍树时) ===
+  // === 斧头 ===
   if(screen=='forest'&&chopping){
-    box(cx2+bodyW+armW+2,armTop-2+up,2,8,7); // 斧柄
-    box(cx2+bodyW+armW,armTop-5+up,4,3,8); // 斧刃
+    box(cx2+bw+aw+4,at-4+up,3,16,9); // 斧柄(棕色)
+    box(cx2+bw+aw,at-9+up,7,5,10);   // 斧刃(银色)
   }
 
   // === 头 ===
-  let headR=5,headY=3;
-  skin(cx2-3,headY,1,1);skin(cx2+2,headY,1,1);
-  skin(cx2-4,headY+1,1,2);skin(cx2+3,headY+1,1,2);
-  skin(cx2-5,headY+3,1,3);skin(cx2+4,headY+3,1,3);
-  box(cx2-3,headY+1,6,7,1); // 脸部主体
+  let hd=12,hy=1;
+  // 脸型(圆形像素)
+  S(cx2-6,hy+1,2,1);S(cx2+4,hy+1,2,1);
+  S(cx2-7,hy+2,2,2);S(cx2+5,hy+2,2,2);
+  S(cx2-8,hy+4,1,4);S(cx2+7,hy+4,1,4);
+  S(cx2-8,hy+8,2,2);S(cx2+6,hy+8,2,2);
+  S(cx2-7,hy+10,2,1);S(cx2+5,hy+10,2,1);
+  box(cx2-6,hy+3,12,8,1); // 面部主体
 
-  // 头发
+  // 发型
   if(isF){
-    // 长发
-    hair(cx2-5,headY,10,2);
-    hair(cx2-5,headY+1,2,5);hair(cx2+3,headY+1,2,5);
-    hair(cx2-4,headY+7,2,3);hair(cx2+2,headY+7,2,3);
+    H(cx2-8,hy,16,3); // 头顶
+    H(cx2-8,hy+2,3,8);H(cx2+5,hy+2,3,8); // 两侧长发
+    H(cx2-7,hy+10,3,4);H(cx2+4,hy+10,3,4); // 发尾
+    H(cx2-5,hy+12,2,2);H(cx2+3,hy+12,2,2); // 鬓角
   }else{
-    hair(cx2-4,headY,8,2);
-    hair(cx2-4,headY+1,1,1);hair(cx2+3,headY+1,1,1);
+    H(cx2-7,hy,14,2);
+    H(cx2-7,hy+1,2,1);H(cx2+5,hy+1,2,1);
+    H(cx2-6,hy+2,1,1);H(cx2+5,hy+2,1,1);
   }
 
-  // 五官（像素表情）
   // 眉毛
-  if(m.chest>50){box(cx2-2,headY+3,2,1,5);box(cx2+1,headY+3,2,1,5)}else{box(cx2-2,headY+3,2,1,5);box(cx2+1,headY+3,2,1,5)}
+  let brow=3;
+  if(m.chest>55){E(cx2-4,hy+brow,2,1);E(cx2+2,hy+brow+1,2,1)} // 凶悍(高低眉)
+  else{E(cx2-4,hy+brow,2,1);E(cx2+2,hy+brow,2,1)}
+  E(cx2-5,hy+brow,1,1);E(cx2+3,hy+brow,1,1); // 眉尾
 
-  // 眼睛
-  eye(cx2-3,headY+4,2,2);eye(cx2+1,headY+4,2,2);
-  // 高光
-  box(cx2-3,headY+4,1,1,0);box(cx2+1,headY+4,1,1,0);
+  // 眼睛(4像素宽,有层次)
+  E(cx2-5,hy+brow+2,3,3);E(cx2+2,hy+brow+2,3,3);
+  box(cx2-5,hy+brow+2,1,1,0);box(cx2+2,hy+brow+2,1,1,0); // 高光
+  box(cx2-4,hy+brow+3,2,1,0);box(cx2+3,hy+brow+3,2,1,0); // 瞳孔高光
 
-  // 嘴（肌肉越壮嘴咧越宽）
-  let mouthW=1+Math.floor(m.chest*0.06);
-  skin(cx2-mouthW,headY+6,mouthW*2+1,1);
-  skin(cx2-mouthW+1,headY+5,Math.max(1,mouthW*2-1),1);
+  // 鼻子
+  S(cx2-1,hy+brow+4,2,2);
+  box(cx2-1,hy+brow+5,1,1,0); // 鼻梁高光
+
+  // 嘴(越壮嘴咧越开)
+  let mw=1+Math.floor(m.chest*0.08);
+  S(cx2-mw,hy+brow+6,1,1);S(cx2+mw-1,hy+brow+6,1,1); // 嘴角
+  Sk(cx2-mw+1,hy+brow+6,mw*2-2,1); // 嘴线
+
+  // 脸颊红晕
+  if(isF){box(cx2-6,hy+brow+3,2,1,11);box(cx2+4,hy+brow+3,2,1,11)}
+
+  // 耳朵
+  S(cx2-8,hy+4,2,3);S(cx2+6,hy+4,2,3);
 
   // 脖子
-  skin(cx2-2,11,4,2);
+  S(cx2-4,16,8,4);
+  // 喉结(男性)
+  if(!isF&&m.chest>20)S(cx2-1,18,2,1);
 
-  // === 渲染网格 ===
+  // === 渲染 ===
   let colors=[
-    null,              // 0=透明
-    ch.skin,           // 1=皮肤
-    ch.hair,           // 2=头发
-    isF?(ch.top):ch.top,// 3=衣服
-    'rgba(0,0,0,0.35)',// 4=肌肉线条
-    '#111',            // 5=眼睛
-    '#333',            // 6=鞋子
-    '#8B4513',         // 7=斧柄
-    '#C0C0C0',         // 8=斧刃
+    null,'rgba(0,0,0,0)',       // 0=透明
+    ch.skin,                      // 1=皮肤
+    ch.hair,                      // 2=头发
+    ch.top,                       // 3=上衣
+    'rgba(0,0,0,0.3)',           // 4=肌肉线(深)
+    '#1a1a1a',                    // 5=瞳孔
+    '#444',                       // 6=鞋子
+    'rgba(0,0,0,0.15)',           // 7=皮肤阴影
+    ch.bot,                       // 8=裤子(未用)
+    '#6B3A1F',                    // 9=斧柄
+    '#B0B0B0',                    // 10=斧刃
+    'rgba(255,150,150,0.5)',      // 11=腮红
   ];
 
-  let totalW=WID*px,totalH=HGT*px;
-  let ox=cx-totalW/2,oy=cy-totalH*0.45;
+  let tw=WID*px,th=HGT*px;
+  let ox=cx-tw/2,oy=cy-th*0.45;
 
+  // 先画纯色像素
   for(let r=0;r<HGT;r++){
     for(let c=0;c<WID;c++){
       let col=colors[grid[r][c]];
-      if(!col)continue;
+      if(!col||col=='rgba(0,0,0,0)')continue;
       ctx.fillStyle=col;
       ctx.fillRect(ox+c*px,oy+r*px,px,px);
     }
   }
 
-  // 像素网格线(淡色，增强像素感)
-  ctx.globalAlpha=0.12;ctx.strokeStyle='#000';ctx.lineWidth=0.5;
-  for(let r=0;r<=HGT;r++){ctx.beginPath();ctx.moveTo(ox,oy+r*px);ctx.lineTo(ox+totalW,oy+r*px);ctx.stroke()}
-  for(let c=0;c<=WID;c++){ctx.beginPath();ctx.moveTo(ox+c*px,oy);ctx.lineTo(ox+c*px,oy+totalH);ctx.stroke()}
-  ctx.globalAlpha=1;
+  // 像素间隙(增强像素颗粒感)
+  if(px>=3){
+    ctx.fillStyle='rgba(0,0,0,0.08)';
+    for(let r=0;r<HGT;r++){ctx.fillRect(ox,oy+r*px-0.5,tw,0.5)}
+    for(let c=0;c<WID;c++){ctx.fillRect(ox+c*px-0.5,oy,0.5,th)}
+  }
 }
 
 function drawTree(t){
