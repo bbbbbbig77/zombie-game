@@ -41,28 +41,17 @@ function playNote(freq,start,dura,vol,type='triangle'){
   g.gain.exponentialRampToValueAtTime(0.001,bgmCtx.currentTime+start+dura);
   o.connect(g);g.connect(bgmGain);o.start(bgmCtx.currentTime+start);o.stop(bgmCtx.currentTime+start+dura);
 }
-function playBassLoop(){
-  let notes=[65.4,73.4,82.4,73.4,65.4,55.0,49.0,55.0]; // C2-D2-E2-D2-C2-A1-G1-A1
-  function loop(){
-    for(let i=0;i<notes.length;i++){let t=i*1.2;playNote(notes[i],t,0.8,0.25,'sine')}
-    setTimeout(()=>{if(bgmOn)loop()},notes.length*1200);
-  }loop();
+function playBassLoop(){ // 活泼贝斯
+  let n=[65.4,82.4,98.0,82.4,73.4,98.0,65.4,82.4,110.0,98.0,82.4,73.4];
+  function loop(){for(let i=0;i<n.length;i++){let t=i*0.5;playNote(n[i],t,0.4,0.3,'sine')}setTimeout(()=>{if(bgmOn)loop()},n.length*500);}loop();
 }
-function playChordLoop(){
-  let chords=[[130.8,164.8,196.0],[146.8,174.6,220.0],[164.8,196.0,246.9],[130.8,164.8,196.0],[110.0,130.8,164.8],[98.0,123.5,146.8]];
-  function loop(){
-    for(let i=0;i<chords.length;i++){
-      for(let n of chords[i])playNote(n,i*2.4,2.2,0.06,'sine');
-    }
-    setTimeout(()=>{if(bgmOn)loop()},chords.length*2400);
-  }loop();
+function playChordLoop(){ // 快乐和弦
+  let c=[[261.6,329.6,392.0],[293.7,349.2,440.0],[329.6,392.0,493.9],[261.6,329.6,392.0],[220.0,293.7,349.2],[196.0,261.6,329.6],[220.0,293.7,349.2],[261.6,329.6,392.0]];
+  function loop(){for(let i=0;i<c.length;i++){for(let n of c[i])playNote(n,i*1.0,0.9,0.07,'triangle')}setTimeout(()=>{if(bgmOn)loop()},c.length*1000);}loop();
 }
-function playMelodyLoop(){
-  let melody=[261.6,293.7,329.6,349.2,392.0,349.2,329.6,293.7,261.6,220.0,246.9,261.6,293.7,261.6,246.9,220.0];
-  function loop(){
-    for(let i=0;i<melody.length;i++){let t=i*1.8+Math.random()*0.15;playNote(melody[i],t,0.5,0.04,'triangle')}
-    setTimeout(()=>{if(bgmOn)loop()},melody.length*1800+8000); // 间隔长
-  }loop();
+function playMelodyLoop(){ // 欢快主旋律
+  let m=[523,587,659,523,659,784,880,784,659,587,523,440,494,523,587,523,440,392,349,330,392,440,494,523];
+  function loop(){for(let i=0;i<m.length;i++){let t=i*0.35+Math.random()*0.05;playNote(m[i],t,0.18,0.06,'square');playNote(m[i]/2,t,0.15,0.03,'triangle')}setTimeout(()=>{if(bgmOn)loop()},m.length*350+3000);}loop();
 }
 
 // ========== 游戏数据 ==========
@@ -349,15 +338,32 @@ function draw(){
   ctx.clearRect(0,0,W,H);
 
   if(screen==='home'){
-    let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a3a5a');g.addColorStop(1,'#1a2a3a');
-    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    // ★主角占正中75%屏幕★
+    // 动漫唯美天空背景
+    let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#87CEEB');sky.addColorStop(0.4,'#FFB6C1');sky.addColorStop(0.7,'#98FB98');sky.addColorStop(1,'#228B22');
+    ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+    // 太阳
+    ctx.fillStyle='rgba(255,255,200,0.8)';ctx.beginPath();ctx.arc(W*0.8,H*0.12,W*0.12,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,220,0.3)';ctx.beginPath();ctx.arc(W*0.8,H*0.12,W*0.18,0,Math.PI*2);ctx.fill();
+    // 白云
+    let t=Date.now()*0.0001;
+    for(let i=0;i<5;i++){let bx=((W*(0.1+i*0.25)+t*20)%(W+100))-50;let by=H*(0.08+Math.sin(i)*0.06);ctx.fillStyle='rgba(255,255,255,0.7)';ctx.beginPath();ctx.arc(bx,by,W*0.07,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(bx+W*0.05,by-W*0.02,W*0.05,0,Math.PI*2);ctx.fill();}
+    // 远山
+    ctx.fillStyle='rgba(100,180,100,0.4)';ctx.beginPath();ctx.moveTo(0,H*0.7);ctx.quadraticCurveTo(W*0.3,H*0.5,W*0.5,H*0.65);ctx.quadraticCurveTo(W*0.7,H*0.55,W,H*0.6);ctx.lineTo(W,H*0.75);ctx.lineTo(0,H*0.75);ctx.fill();
+    // 花丛
+    for(let i=0;i<10;i++){let fx=W*(0.05+i*0.1),fy=H*(0.72+Math.sin(i)*0.03);ctx.fillStyle=['#ff8888','#ffaa66','#ffdd44','#ff6699','#ffaaaa'][i%5];ctx.beginPath();ctx.arc(fx,fy,4,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(fx,fy,1.5,0,Math.PI*2);ctx.fill();}
+    // 草地
+    ctx.fillStyle='#7ec850';ctx.fillRect(0,H*0.74,W,H*0.26);
+    ctx.fillStyle='#6ab840';for(let i=0;i<20;i++){ctx.beginPath();ctx.moveTo(W*(i*0.05),H*0.74);ctx.lineTo(W*(i*0.05+0.02),H*0.68-Math.sin(i)*5);ctx.lineTo(W*(i*0.05+0.04),H*0.74);ctx.fill()}
+    // 闪烁星光
+    for(let i=0;i<8;i++){let sx=W*(0.1+i*0.12+(Math.sin(t*2+i)*0.05)),sy=H*(0.05+Math.abs(Math.cos(t+i))*0.1);ctx.fillStyle='rgba(255,255,255,'+(0.3+Math.sin(t*3+i)*0.3)+')';ctx.beginPath();ctx.arc(sx,sy,1.5+Math.random(),0,Math.PI*2);ctx.fill()}
+    // 主角
     drawDude(W/2,H*.44);
     // 名字
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(22,W*.06)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';
-    ctx.fillText(chars[characterIndex].name,W/2,H*.1);
-    // 金币在脚底
-    ctx.fillStyle='#ffd700';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText('🪙 '+gold,W/2,H*.78);
+    ctx.fillStyle='#fff';ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=3;ctx.font=`bold ${Math.min(22,W*.06)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';
+    ctx.strokeText(chars[characterIndex].name,W/2,H*.1);ctx.fillText(chars[characterIndex].name,W/2,H*.1);
+    // 金币
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.font='bold 16px monospace';ctx.fillText('🪙 '+gold,W/2+1,H*.78+1);
+    ctx.fillStyle='#ffd700';ctx.fillText('🪙 '+gold,W/2,H*.78);
     // 肌肉条放底部
     let bars=['upper','chest','abs','legs'],names=['💪上肢','🦾胸肌','🥓腹肌','🦵下肢'];
     for(let i=0;i<4;i++){let m=muscles[bars[i]],need=xpNeeded(m),pct=xpData[bars[i]]/need;ctx.fillStyle='#fff';ctx.font='9px monospace';ctx.textAlign='left';ctx.fillText(names[i]+' Lv'+Math.floor(m)+'('+Math.floor(xpData[bars[i]])+'/'+need+')',W*.06,H*.82+i*17);ctx.fillStyle='#333';ctx.fillRect(W*.35,H*.815+i*17,W*.55,8);let col=m>70?'#ff0':(m>40?'#fa0':(m>15?'#f80':'#f60'));ctx.fillStyle=col;ctx.fillRect(W*.35,H*.815+i*17,W*.55*(m/100),8);ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillRect(W*.35,H*.815+i*17,W*.55*pct,4)}
