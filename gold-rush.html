@@ -29,9 +29,9 @@ resize();window.addEventListener('resize',resize);
 
 // ========== 兵种定义 ==========
 const BT={
-  infantry:{name:'步兵营',cost:20,hp:220,unitHP:60,unitAtk:10,unitSpd:1.2,unitRate:240,color:'#4499ee',uColor:'#66bbff',size:28,range:0,desc:'近战'},
-  archer:{name:'弓箭营',cost:30,hp:150,unitHP:35,unitAtk:15,unitSpd:0.7,unitRate:270,color:'#44cc44',uColor:'#88ff88',size:26,range:130,desc:'远程'},
-  knight:{name:'骑士营',cost:50,hp:300,unitHP:150,unitAtk:28,unitSpd:2.0,unitRate:340,color:'#ee9944',uColor:'#ffcc66',size:34,range:0,desc:'重装'},
+  infantry:{name:'步兵营',cost:20,hp:220,unitHP:60,unitAtk:10,unitSpd:1.2,unitRate:500,color:'#4499ee',uColor:'#66bbff',size:28,range:0,desc:'近战'},
+  archer:{name:'弓箭营',cost:30,hp:150,unitHP:35,unitAtk:15,unitSpd:0.7,unitRate:550,color:'#44cc44',uColor:'#88ff88',size:26,range:130,desc:'远程'},
+  knight:{name:'骑士营',cost:50,hp:300,unitHP:150,unitAtk:28,unitSpd:2.0,unitRate:700,color:'#ee9944',uColor:'#ffcc66',size:34,range:0,desc:'重装'},
 };
 
 // ========== 存档 ==========
@@ -54,8 +54,8 @@ function initGame(){
   enemyHP=enemyMaxHP=400+level*40;
   gameOver=false;victory=false;frame=0;selectedCard=null;
   units=[];farmers=[];barracks=[];particles=[];resources=[];obstacles=[];
-  base={x:75,y:H*0.45,r:25,produceTimer:0,produceRate:190};
-  enemyBase={x:W-75,y:H*0.45,r:25,produceTimer:0,produceRate:210-level*2};
+  base={x:75,y:H*0.45,r:25,produceTimer:0,produceRate:350};
+  enemyBase={x:W-75,y:H*0.45,r:25,produceTimer:0,produceRate:380};
   enemyGold=25+level*12;aiBuildTimer=0;
 
   // 金矿 (4-6个, 大而明显)
@@ -85,7 +85,7 @@ function initGame(){
   myCards.forEach((t,i)=>{cardSlots.push({x:sx+i*78,y:cy,w:70,h:90,type:t})});
 
   // AI初始
-  let aiN=Math.min(1+Math.floor(level/3),3);
+  let aiN=Math.min(1,1+Math.floor(level/5));
   let aiTypes=['infantry'];if(level>=2)aiTypes.push('archer');if(level>=4)aiTypes.push('knight');
   for(let i=0;i<aiN;i++){
     let t=aiTypes[Math.floor(Math.random()*aiTypes.length)];
@@ -93,7 +93,7 @@ function initGame(){
     let by=enemyBase.y+(Math.random()-0.5)*90;
     by=Math.max(70,Math.min(H-170,by));
     barracks.push({type:t,x:bx,y:by,owner:'enemy',HP:BT[t].hp,maxHP:BT[t].hp,
-      size:BT[t].size,color:BT[t].color,produceTimer:0,produceRate:BT[t].unitRate+40,
+      size:BT[t].size,color:BT[t].color,produceTimer:0,produceRate:BT[t].unitRate+100,
       uHP:uHP(t),uAtk:uAtk(t),uSpd:BT[t].unitSpd,uColor:BT[t].uColor,range:BT[t].range||0,lvl:glv(t)});
   }
 }
@@ -136,8 +136,8 @@ function update(){
 
   // 造农民
   base.produceTimer++;enemyBase.produceTimer++;
-  if(base.produceTimer>=base.produceRate&&farmers.filter(f=>f.side==='player').length<5+level){base.produceTimer=0;spawnFarmer('player')}
-  if(enemyBase.produceTimer>=enemyBase.produceRate&&farmers.filter(f=>f.side==='enemy').length<3+Math.floor(level/2)){enemyBase.produceTimer=0;spawnFarmer('enemy')}
+  if(base.produceTimer>=base.produceRate&&farmers.filter(f=>f.side==='player').length<4){base.produceTimer=0;spawnFarmer('player')}
+  if(enemyBase.produceTimer>=enemyBase.produceRate&&farmers.filter(f=>f.side==='enemy').length<3){enemyBase.produceTimer=0;spawnFarmer('enemy')}
 
   // 农民AI
   for(let f of farmers){
@@ -204,8 +204,8 @@ function update(){
   units=units.filter(u=>u.HP>0);
 
   // AI建兵营
-  aiBuildTimer++;let aiRate=Math.max(90,190-level*12);
-  if(aiBuildTimer>=aiRate&&barracks.filter(b=>b.owner==='enemy').length<2+Math.floor(level/3)){
+  aiBuildTimer++;let aiRate=Math.max(400,700-level*20);
+  if(aiBuildTimer>=aiRate&&barracks.filter(b=>b.owner==='enemy').length<Math.min(2,1+Math.floor(level/4))){
     aiBuildTimer=0;
     let types=['infantry'];if(level>=2)types.push('archer');if(level>=4)types.push('knight');
     let t=types[Math.floor(Math.random()*types.length)];
