@@ -141,7 +141,7 @@ function goTo(s){
     btn(W*.25,H*.66,Math.min(180,W*.5),60,'🪓 撸树赚钱','#4a8',()=>goTo('forest'));btn(W*.25,H*.66+68,Math.min(180,W*.5),60,'🏋️ 撸铁猛干','#48a',()=>goTo('iron'));btn(W*.25,H*.66+136,Math.min(180,W*.5),44,'👤 换人','#888',()=>goTo('select'));
     // BGM按钮
     btn(W-50,8,42,26,'🎵','rgba(255,255,255,.15)',()=>toggleBGM());}
-  if(s==='select'){let n=chars.length;let bw=Math.min(60,W*.13);let gap=5;let rowW=n*bw+(n-1)*gap;let sx=W/2-rowW/2;for(let i=0;i<n;i++){let idx=i;btn(sx+i*(bw+gap),H*.58,bw,54,chars[i].name,'#555',()=>{characterIndex=idx;goTo('home')})}btn(W/2-50,H*.72,100,36,'← 返回','#555',()=>goTo('home'))}
+  if(s==='select'){let n=chars.length;let cols=3;let bw=Math.min(80,W*.22),gap=8;let rows=Math.ceil(n/cols);for(let i=0;i<n;i++){let r=Math.floor(i/cols),c=i%cols;let totalW=cols*bw+(cols-1)*gap;let sx=W/2-totalW/2;let idx=i;btn(sx+c*(bw+gap),H*.55+r*(bw+10),bw,80,chars[i].name,'#555',()=>{characterIndex=idx;goTo('home')})}btn(W/2-50,H*.85,100,36,'← 返回','#555',()=>goTo('home'))}
   if(s==='forest'){player.x=W/2;player.y=H*.65;spawnForest();btn(W/2-50,H*.94,100,36,'← 回主页','#555',()=>goTo('home'));}
   if(s==='iron'){btn(W/2-70,H*.65,140,46,'🏗️ 即将开放','#555',null);btn(W/2-50,H*.76,100,36,'← 返回','#555',()=>goTo('home'))}
   chopCD=0;chopping=null;joystickActive=false;
@@ -150,68 +150,152 @@ function goTo(s){
 function btn(x,y,w,h,text,color,cb){buttons.push({x,y,w,h,text,color,cb})}
 
 // ========== 画人（占屏幕3/4） ==========
-function drawDude(cx,cy,z){
+function drawDude(cx,cy,scale){
   let m=muscles;let ch=chars[characterIndex];
   let isF=ch.gender=='female';
-  let ps=Math.min(H*0.6/40,W*0.7/24); // pixel size
-  let GW=24,GH=40; // grid
+  // 像素大小: 选择界面缩小
+  let px=(screen==='select')?Math.min(H*0.2/48,W*0.15/32):Math.min(H*0.55/48,W*0.65/32);
+  let GW=32,GH=48;
   let g=[];for(let r=0;r<GH;r++){g[r]=[];for(let c=0;c<GW;c++)g[r][c]=0}
 
-  // helper
   function B(x,y,w,h,v){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<GH&&c>=0&&c<GW)g[r][c]=v}
-  let S=(x,y,w,h)=>B(x,y,w,h,1); // skin
-  let Hr=(x,y,w,h)=>B(x,y,w,h,2); // hair
-  let C=(x,y,w,h)=>B(x,y,w,h,3); // cloth
-  let E=(x,y,w,h)=>B(x,y,w,h,4); // eye
-  let M=(x,y,w,h)=>B(x,y,w,h,5); // muscle
+  // 颜色索引: 0=透明 1=皮肤 2=头发 3=上衣 4=眼睛 5=肌肉线 6=鞋子 7=裤子 8=皮肤阴影
+  let S=(x,y,w,h)=>B(x,y,w,h,1);
+  let H=(x,y,w,h)=>B(x,y,w,h,2);
+  let T=(x,y,w,h)=>B(x,y,w,h,3);
+  let E=(x,y,w,h)=>B(x,y,w,h,4);
+  let M=(x,y,w,h)=>B(x,y,w,h,5);
+  let Sh=(x,y,w,h)=>B(x,y,w,h,6);
+  let P=(x,y,w,h)=>B(x,y,w,h,7);
+  let Sk=(x,y,w,h)=>B(x,y,w,h,8);
 
-  let mid=12; // center
-  let ag=Math.floor(m.upper*0.1); // arm growth
-  let cg=Math.floor(m.chest*0.09);
-  let lg=Math.floor(m.legs*0.07);
+  let mx=Math.floor(GW/2); // 中轴
+  // 肌肉增益(初始极小→越练越宽)
+  let ag=m.upper*0.15;   // 手臂从1px开始
+  let cg=m.chest*0.12;   // 身体从3px开始
+  let lg=m.legs*0.1;     // 腿从2px开始
+  let abg=m.abs*0.1;
 
-  // legs + shoes
-  B(mid-5,36,4,2,6);B(mid+1,36,4,2,6); // shoes
-  S(mid-5,28,3+lg,8);S(mid+2-lg,28,3+lg,8); // legs
-  if(m.legs>10)M(mid-5,30,3+lg,1);M(mid+2-lg,30,3+lg,1);
-  // shorts
-  C(mid-6,24,12,5);
-  // body
-  let bw=5+cg;S(mid-bw,11,bw*2,14);
-  C(mid-bw,11,bw*2,9);
-  // pecs
-  if(m.chest>5){M(mid,13,1,4);M(mid-2,13,1,1);M(mid+1,13,1,1)}
-  if(m.chest>15){M(mid-3,13,2,1);M(mid+1,13,2,1)}
-  // abs
-  if(m.abs>5){let n=Math.min(4,Math.floor(m.abs/15));for(let i=0;i<n;i++){M(mid-3,19+i*2,6,1);M(mid,19+i*2,1,1)}}
-  // arms
-  let at=13;S(mid-bw-3,at,2+ag,10); // left
-  let up=(screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-3:0;
-  S(mid+bw+1,at+up,2+ag,10); // right
-  if(m.upper>10){M(mid-bw-3,at+2,2+ag,2);M(mid+bw+1,at+2+up,2+ag,2)}
-  // fists
-  S(mid-bw-4,23,3+ag,3);S(mid+bw+1,23+up,3+ag,3);
-  // head
-  B(mid-4,0,8,1,1);B(mid-5,1,10,2,1);B(mid-5,3,10,5,1);B(mid-4,8,8,2,1);B(mid-3,10,6,1,1);
-  // hair
-  if(isF){Hr(mid-5,0,10,2);Hr(mid-5,2,2,6);Hr(mid+3,2,2,6)}
-  else{Hr(mid-4,0,8,2);Hr(mid-4,1,1,1);Hr(mid+3,1,1,1)}
-  // eyes
-  E(mid-3,4,2,2);E(mid+1,4,2,2);B(mid-3,4,1,1,0);B(mid+1,4,1,1,0);
-  // mouth
-  S(mid-1,7,2,1);
-  // neck
-  S(mid-2,10,4,2);
+  // === 脚 ===
+  Sh(mx-4,GH-4,3,2);Sh(mx+1,GH-4,3,2);
 
-  // render
-  let cols=[null,ch.skin,ch.hair,ch.top,'#1a1a1a','rgba(0,0,0,0.3)','#333'];
-  let tw=GW*ps,th=GH*ps;let ox=cx-tw/2,oy=cy-th*0.45;
-  for(let r=0;r<GH;r++){for(let c=0;c<GW;c++){let v=g[r][c];if(!v||!cols[v])continue;ctx.fillStyle=cols[v];ctx.fillRect(ox+c*ps,oy+r*ps,ps,ps)}}
-  // grid lines
-  if(ps>=3){ctx.globalAlpha=0.08;ctx.strokeStyle='#000';ctx.lineWidth=0.5;
-    for(let r=0;r<=GH;r++){ctx.beginPath();ctx.moveTo(ox,oy+r*ps);ctx.lineTo(ox+tw,oy+r*ps);ctx.stroke()}
-    for(let c=0;c<=GW;c++){ctx.beginPath();ctx.moveTo(ox+c*ps,oy);ctx.lineTo(ox+c*ps,oy+th);ctx.stroke()}
-    ctx.globalAlpha=1}
+  // === 小腿(极细→变粗) ===
+  let cw=1+Math.floor(lg);
+  S(mx-3,40,cw,5);S(mx+3-cw,40,cw,5);
+
+  // === 大腿 ===
+  S(mx-3,34,2+Math.floor(lg),7);S(mx+1-Math.floor(lg),34,2+Math.floor(lg),7);
+  if(m.legs>15){M(mx-3,36,2+Math.floor(lg),1);M(mx+1-Math.floor(lg),36,2+Math.floor(lg),1)}
+
+  // === 短裤 ===
+  P(mx-5,31,10,4);
+
+  // === 身体(极瘦→健壮) ===
+  let bw=2+Math.floor(cg); // 初始2px宽
+  S(mx-bw,17,bw*2,14);
+  // 上衣
+  T(mx-bw,17,bw*2,9);
+
+  // === 胸肌细节 ===
+  if(m.chest>3){M(mx,19,1,3)} // 初始胸线
+  if(m.chest>8){M(mx-2,18,1,1);M(mx+1,18,1,1)}
+  if(m.chest>18){M(mx-3,18,2,2);M(mx+1,18,2,2)}
+  if(m.chest>35){Sk(mx-bw,18,2,4);Sk(mx+bw-2,18,2,4)}
+
+  // === 腹肌(逐级显现) ===
+  if(m.abs>3){M(mx-1,24,2,1)} // 第1条
+  if(m.abs>8){M(mx-1,26,2,1)} // 第2条
+  if(m.abs>18){M(mx-2,25,4,1);M(mx-2,27,4,1)} // 第3-4条+加宽
+  if(m.abs>35){M(mx-2,28,4,1);Sk(mx-bw,28,bw*2,1)} // 第5条+阴影
+
+  // === 手臂(极细竹竿→粗壮) ===
+  let aw=1+Math.floor(ag); // 初始1px
+  let at=18;
+  // 左臂
+  S(mx-bw-aw-1,at,aw,10);
+  // 右臂(可能挥斧)
+  let up=0;
+  if(screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)up=-3;
+  S(mx+bw+1,at+up,aw,10);
+  // 肱二头肌
+  if(m.upper>8){M(mx-bw-aw-1,at+2,aw,2);M(mx+bw+1,at+2+up,aw,2)}
+  if(m.upper>25){Sk(mx-bw-aw-1,at+1,aw,4);Sk(mx+bw+1,at+1+up,aw,4)}
+  // 前臂+手
+  S(mx-bw-aw-1,27,aw+1,3);S(mx+bw+1,27+up,aw+1,3);
+
+  // === 斧头 ===
+  if(screen=='forest'&&chopping){
+    B(mx+bw+aw+1,at-2+up,2,9,9);
+    B(mx+bw+aw-1,at-5+up,5,3,10);
+  }
+
+  // === 脖子 ===
+  S(mx-1,15,2,2);
+
+  // === 头(大脑袋卡通感) ===
+  let hy=1;
+  B(mx-5,hy,2,1,1);B(mx+3,hy,2,1,1);
+  B(mx-6,hy+1,2,2,1);B(mx+4,hy+1,2,2,1);
+  S(mx-6,hy+3,1,5);S(mx+5,hy+3,1,5);
+  B(mx-4,hy+1,8,8,1); // 脸主体
+  B(mx-5,hy+8,2,2,1);B(mx+3,hy+8,2,2,1);
+  B(mx-4,hy+10,2,1,1);B(mx+2,hy+10,2,1,1);
+
+  // 耳朵
+  S(mx-7,hy+4,2,3);S(mx+5,hy+4,2,3);
+
+  // 头发
+  if(isF){
+    H(mx-6,hy,12,2);
+    H(mx-6,hy+2,2,5);H(mx+4,hy+2,2,5);
+    H(mx-5,hy+9,2,3);H(mx+3,hy+9,2,3);
+  }else{
+    H(mx-5,hy,10,2);
+    H(mx-5,hy+1,1,1);H(mx+4,hy+1,1,1);
+  }
+
+  // 眉毛
+  E(mx-3,hy+3,2,1);E(mx+1,hy+3,2,1);
+
+  // 眼睛(大眼可爱风)
+  E(mx-4,hy+4,2,3);E(mx+2,hy+4,2,3);
+  // 瞳孔高光
+  B(mx-4,hy+4,1,1,0);B(mx+2,hy+4,1,1,0);
+  B(mx-3,hy+5,1,1,0);B(mx+3,hy+5,1,1,0);
+
+  // 鼻子
+  S(mx-1,hy+6,1,1);
+
+  // 嘴
+  S(mx-1,hy+8,2,1);
+
+  // 腮红(女性)
+  if(isF){B(mx-5,hy+5,2,2,11);B(mx+3,hy+5,2,2,11)}
+
+  // === 渲染 ===
+  let colors=[
+    null,ch.skin,ch.hair,ch.top,'#1a1a1a',   // 0-4
+    'rgba(0,0,0,0.3)','#444',ch.bot,                    // 5-7
+    'rgba(0,0,0,0.12)','#6B3A1F','#B0B0B0',            // 8-10
+    'rgba(255,160,160,0.5)',                             // 11=腮红
+  ];
+  let tw=GW*px,th=GH*px;
+  let ox=cx-tw/2,oy=cy-th*0.48;
+
+  for(let r=0;r<GH;r++){
+    for(let c=0;c<GW;c++){
+      let v=g[r][c];if(!v||!colors[v])continue;
+      ctx.fillStyle=colors[v];
+      ctx.fillRect(ox+c*px,oy+r*px,px,px);
+    }
+  }
+
+  // 像素间隙
+  if(px>=2.5){
+    ctx.fillStyle='rgba(0,0,0,0.06)';
+    for(let r=0;r<GH;r++){ctx.fillRect(ox,oy+r*px-0.3,tw,0.3)}
+    for(let c=0;c<GW;c++){ctx.fillRect(ox+c*px-0.3,oy,0.3,th)}
+  }
 }
 
 function drawTree(t){
@@ -276,7 +360,7 @@ function draw(){
     let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a3a5a');g.addColorStop(1,'#1a2a3a');
     ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     // ★主角占正中75%屏幕★
-    drawDude(W/2,H*.42,.95);
+    drawDude(W/2,H*.44);
     // 名字
     ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(22,W*.06)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';
     ctx.fillText(chars[characterIndex].name,W/2,H*.1);
@@ -289,11 +373,12 @@ function draw(){
 
   if(screen==='select'){
     ctx.fillStyle='#1a2a3a';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(20,W*.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('选择角色',W/2,H*.1);
-    let n=chars.length;let bw=Math.min(80,W*.17);let gap=8;let row=n<5?1:2;let perRow=Math.ceil(n/row);
-    for(let i=0;i<n;i++){let r=Math.floor(i/perRow);let c=i%perRow;let sx=W/2-(perRow*(bw+gap)-gap)/2;let x=sx+c*(bw+gap),y=H*.32+r*(H*.25);
-      ctx.save();let ci=characterIndex;characterIndex=i;drawDude(x,y,.45);characterIndex=ci;ctx.restore();
-      ctx.fillStyle=i===characterIndex?'#ff0':'#888';ctx.font='8px PingFang SC,Microsoft YaHei,sans-serif';ctx.textAlign='center';ctx.fillText(chars[i].name,x,y-30);}
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(20,W*.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('选择角色',W/2,H*.06);
+    let n=chars.length;let cols=3,bw2=Math.min(80,W*.22),gap2=8;let rows=Math.ceil(n/cols);
+    let tw2=cols*bw2+(cols-1)*gap2;
+    for(let i=0;i<n;i++){let r=Math.floor(i/cols);let c=i%cols;let sx2=W/2-tw2/2;let x=sx2+c*(bw2+gap2)+bw2/2,y=H*.2+r*(H*.28);
+      ctx.save();let ci=characterIndex;characterIndex=i;drawDude(x,y,1);characterIndex=ci;ctx.restore();
+      ctx.fillStyle=i===characterIndex?'#ff0':'#fff';ctx.font='bold 10px PingFang SC,Microsoft YaHei,sans-serif';ctx.textAlign='center';ctx.fillText(chars[i].name,x,y+bw2*0.52);}
   }
 
   if(screen==='forest'){
@@ -307,7 +392,7 @@ function draw(){
     for(let t of forestTrees){if(t.hp<=0)continue;drawTree(t)}
     for(let t of forestTrees){if(t.hp>0)continue;ctx.fillStyle='rgba(100,100,100,.3)';ctx.fillRect(t.x-3,t.y-5,6,16);ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText('🪵',t.x,t.y-6)}
     // 角色(正常大小)
-    drawDude(player.x,player.y,.5);
+    drawDude(player.x,player.y);
     // 粒子
     for(let p of particles){ctx.globalAlpha=Math.min(1,p.life/22);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();if(p.text){ctx.fillStyle='#ffd700';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.fillText(p.text,p.x,p.y-5)}ctx.globalAlpha=1}
     // HUD
