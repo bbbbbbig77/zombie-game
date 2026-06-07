@@ -87,9 +87,12 @@ let forestTrees=[], chopping=null, chopCD=0, chopGain=0;
 const CHOP_INT=45;
 
 const chars=[
-  {name:'呆萌小明',emoji:'😶',color:'#ffcc88'},
-  {name:'丑萌老王',emoji:'😜',color:'#ccaa77'},
-  {name:'帅气阿强',emoji:'😎',color:'#ddbb88'},
+  {name:'呆萌小明',gender:'male',skin:'#ffcc88',hair:'#2a2a2a',eyes:'😶',top:'#4488cc',bot:'#334'},
+  {name:'丑萌老王',gender:'male',skin:'#ccaa77',hair:'#1a1a1a',eyes:'😜',top:'#cc7744',bot:'#224'},
+  {name:'帅气阿强',gender:'male',skin:'#eebb99',hair:'#3a3a3a',eyes:'😎',top:'#44aa44',bot:'#223'},
+  {name:'大力小美',gender:'female',skin:'#ffe0cc',hair:'#8b4513',eyes:'😊',top:'#ee6699',bot:'#424'},
+  {name:'飒爽阿珍',gender:'female',skin:'#d4a574',hair:'#1a1a1a',eyes:'😏',top:'#66aadd',bot:'#335'},
+  {name:'酷酷小黑',gender:'male',skin:'#8d6e63',hair:'#111',eyes:'🫤',top:'#eeaa44',bot:'#332'},
 ];
 
 // ========== 森林生成 ==========
@@ -138,7 +141,7 @@ function goTo(s){
     btn(W*.25,H*.66,Math.min(180,W*.5),60,'🪓 撸树赚钱','#4a8',()=>goTo('forest'));btn(W*.25,H*.66+68,Math.min(180,W*.5),60,'🏋️ 撸铁猛干','#48a',()=>goTo('iron'));btn(W*.25,H*.66+136,Math.min(180,W*.5),44,'👤 换人','#888',()=>goTo('select'));
     // BGM按钮
     btn(W-50,8,42,26,'🎵','rgba(255,255,255,.15)',()=>toggleBGM());}
-  if(s==='select'){for(let i=0;i<3;i++){let bw=Math.min(130,W*.28);let idx=i;btn(W/2-bw*1.6+i*bw*1.1,H*.55,bw,76,chars[i].name,'#555',()=>{characterIndex=idx;goTo('home')})}btn(W/2-50,H*.7,100,38,'← 返回','#555',()=>goTo('home'))}
+  if(s==='select'){let n=chars.length;let bw=Math.min(60,W*.13);let gap=5;let rowW=n*bw+(n-1)*gap;let sx=W/2-rowW/2;for(let i=0;i<n;i++){let idx=i;btn(sx+i*(bw+gap),H*.58,bw,54,chars[i].name,'#555',()=>{characterIndex=idx;goTo('home')})}btn(W/2-50,H*.72,100,36,'← 返回','#555',()=>goTo('home'))}
   if(s==='forest'){player.x=W/2;player.y=H*.65;spawnForest();btn(W/2-50,H*.94,100,36,'← 回主页','#555',()=>goTo('home'));}
   if(s==='iron'){btn(W/2-70,H*.65,140,46,'🏗️ 即将开放','#555',null);btn(W/2-50,H*.76,100,36,'← 返回','#555',()=>goTo('home'))}
   chopCD=0;chopping=null;joystickActive=false;
@@ -149,68 +152,41 @@ function btn(x,y,w,h,text,color,cb){buttons.push({x,y,w,h,text,color,cb})}
 // ========== 画人（占屏幕3/4） ==========
 function drawDude(cx,cy,z){
   let s=z||1;let m=muscles;let ch=chars[characterIndex];
-  // bh = 人物身体占屏幕75%
-  let bh=Math.min(H*0.5,W*3)*s;
-  ctx.save();ctx.translate(cx,cy);
-  // 阴影
-  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,bh*0.85,bh*0.55+m.legs*bh*0.01,bh*0.07,0,0,Math.PI*2);ctx.fill();
-  // 脚
+  let bh=Math.min(H*0.5,W*3)*s;ctx.save();ctx.translate(cx,cy);
+  let isF=ch.gender=='female';
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,bh*0.85,bh*0.5+m.legs*bh*0.01,bh*0.07,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#444';ctx.fillRect(-bh*0.18,bh*1.02,bh*0.4,8);ctx.fillRect(bh*0.08,bh*1.02,bh*0.4,8);
-  // 小腿
-  let calfW=bh*0.13+m.legs*bh*0.01;
-  ctx.fillStyle='#555';ctx.fillRect(-bh*0.12,bh*0.8,calfW,bh*0.25); //左
-  ctx.fillStyle='#555';ctx.fillRect(bh*0.12-calfW,bh*0.8,calfW,bh*0.25); //右
-  // 大腿
-  let thighW=calfW*1.3, thighH=bh*0.4;
-  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.15,bh*0.42,thighW,thighH);
-  ctx.fillStyle=ch.color;ctx.fillRect(bh*0.15-thighW,bh*0.42,thighW,thighH);
-  // 短裤
-  ctx.fillStyle='#335';ctx.fillRect(-bh*0.22,bh*0.4,bh*0.44,bh*0.12);ctx.fillRect(bh*0.05,bh*0.4,bh*0.44,bh*0.12);ctx.fillRect(-bh*0.1,bh*0.38,bh*0.2,bh*0.04);
-
-  // 身体
-  let bodyW=bh*0.32+m.chest*bh*0.014;
-  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW,bh*0.0,bodyW*2,bh*0.5);
-  // 背心
-  ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fillRect(-bodyW*0.7,bh*0.05,bodyW*1.4,bh*0.38);
-  // 胸肌(分块)
-  if(m.chest>8){ctx.fillStyle='rgba(0,0,0,0.1)';ctx.beginPath();ctx.moveTo(0,bh*0.06);ctx.lineTo(0,bh*0.28);ctx.stroke();ctx.fillStyle='rgba(200,160,130,0.35)';ctx.beginPath();ctx.arc(-bodyW*0.22,bh*0.12,bodyW*0.35,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(bodyW*0.22,bh*0.12,bodyW*0.35,0,Math.PI*2);ctx.fill()}
-  // 腹肌(6块)
-  if(m.abs>10){ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1.5;let n=Math.min(6,Math.floor(m.abs/15));for(let i=1;i<=n;i++){ctx.beginPath();ctx.moveTo(-bodyW*0.55,bh*0.2+bh*0.06*i);ctx.lineTo(bodyW*0.55,bh*0.2+bh*0.06*i);ctx.stroke()}ctx.beginPath();ctx.moveTo(0,bh*0.2);ctx.lineTo(0,bh*0.2+bh*0.06*n);ctx.stroke()}
-  // 侧腹/鲨鱼线
-  if(m.abs>40){ctx.strokeStyle='rgba(0,0,0,0.1)';ctx.beginPath();ctx.moveTo(-bodyW*0.7,bh*0.25);ctx.lineTo(-bodyW*0.3,bh*0.42);ctx.stroke();ctx.beginPath();ctx.moveTo(bodyW*0.7,bh*0.25);ctx.lineTo(bodyW*0.3,bh*0.42);ctx.stroke()}
-
-  // 手臂
-  let armW=bh*0.1+m.upper*bh*0.012, armH=bh*0.38;
-  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW-armW-3,bh*0.04,armW,armH); //左臂自然下垂
-  // 右臂(砍树时举斧)
-  let au=(screen==='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-bh*0.25:0;
-  ctx.fillStyle=ch.color;ctx.fillRect(bodyW+3,bh*0.04+au,armW,armH);
-  // 肱二头肌
-  if(m.upper>20){ctx.fillStyle='rgba(255,210,160,0.55)';ctx.beginPath();ctx.arc(bodyW+armW/2,bh*0.14+au,armW*0.8,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-bodyW-armW/2,bh*0.14,armW*0.8,0,Math.PI*2);ctx.fill()}
-  // 前臂
-  ctx.fillStyle=ch.color;ctx.fillRect(bodyW+3,bh*0.38+au,armW*0.85,bh*0.18);
-  ctx.fillRect(-bodyW-armW-1,bh*0.38,armW*0.85,bh*0.18);
-  // 拳头
-  ctx.fillStyle='#fdb';ctx.beginPath();ctx.arc(-bodyW-armW/2,bh*0.56,armW*0.55,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(bodyW+armW/2,bh*0.56+au,armW*0.55,0,Math.PI*2);ctx.fill();
-
-  // 斧头(右臂上方)
-  if(screen==='forest'&&chopping){ctx.fillStyle='#6a4a2a';ctx.fillRect(bodyW+armW+6,bh*0.08+au-bh*0.22,6,bh*0.5);ctx.fillStyle='#999';ctx.fillRect(bodyW+armW-4,bh*0.08+au-bh*0.28,24,14)}
-
-  // 头
-  let hr=bh*0.3;
-  ctx.fillStyle=ch.color;ctx.beginPath();ctx.arc(0,-bh*0.1,hr,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#2a2a2a';ctx.beginPath();ctx.arc(0,-bh*0.18,hr*1.08,Math.PI,Math.PI*2);ctx.fill(); //头发
-  ctx.fillStyle='#000';ctx.font=`${hr*0.75}px monospace`;ctx.textAlign='center';ctx.fillText(ch.emoji,0,-bh*0.08);
-  // 粗脖子
-  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.07,-bh*0.01,bh*0.14,bh*0.1);
-  // 下巴(方下巴)
-  if(muscles.chest>30){ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.08,bh*0.12,bh*0.16,bh*0.04)}
-
+  let cw=bh*0.13+m.legs*bh*0.008;
+  ctx.fillStyle=ch.skin;ctx.fillRect(-bh*0.12,bh*0.8,cw,bh*0.25);ctx.fillStyle=ch.skin;ctx.fillRect(bh*0.12-cw,bh*0.8,cw,bh*0.25);
+  let tw=cw*1.3,th=bh*0.4;
+  ctx.fillStyle=ch.skin;ctx.fillRect(-bh*0.15,bh*0.42,tw,th);ctx.fillStyle=ch.skin;ctx.fillRect(bh*0.15-tw,bh*0.42,tw,th);
+  ctx.fillStyle=ch.bot;ctx.fillRect(-bh*0.22,bh*0.4,bh*0.44,bh*0.15);ctx.fillRect(bh*0.05,bh*0.4,bh*0.44,bh*0.15);
+  let bw=bh*0.3+m.chest*bh*0.012;if(isF)bw=bh*0.28+m.chest*bh*0.01;
+  ctx.fillStyle=ch.skin;ctx.fillRect(-bw,bh*0.0,bw*2,bh*0.5);
+  ctx.fillStyle=ch.top;ctx.fillRect(-bw*0.85,bh*0.02,bw*1.7,bh*0.35);
+  if(m.chest>8){ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,bh*0.06);ctx.lineTo(0,bh*0.25);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.beginPath();ctx.arc(-bw*0.22,bh*0.12,bw*0.3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(bw*0.22,bh*0.12,bw*0.3,0,Math.PI*2);ctx.fill()}
+  if(m.abs>10){ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1.2;let n=Math.min(6,Math.floor(m.abs/15));for(let i=1;i<=n;i++){ctx.beginPath();ctx.moveTo(-bw*0.5,bh*0.22+bh*0.05*i);ctx.lineTo(bw*0.5,bh*0.22+bh*0.05*i);ctx.stroke()}ctx.beginPath();ctx.moveTo(0,bh*0.22);ctx.lineTo(0,bh*0.22+bh*0.05*n);ctx.stroke()}
+  let aw=bh*0.09+m.upper*bh*0.01,ah=bh*0.38;
+  ctx.fillStyle=ch.skin;ctx.fillRect(-bw-aw-2,bh*0.04,aw,ah);
+  let au=(screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-bh*0.25:0;
+  ctx.fillStyle=ch.skin;ctx.fillRect(bw+2,bh*0.04+au,aw,ah);
+  if(m.upper>20){ctx.fillStyle='rgba(255,255,255,0.25)';ctx.beginPath();ctx.arc(bw+aw/2,bh*0.14+au,aw*0.7,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-bw-aw/2,bh*0.14,aw*0.7,0,Math.PI*2);ctx.fill()}
+  ctx.fillStyle=ch.skin;ctx.fillRect(bw+2,bh*0.38+au,aw*0.85,bh*0.18);ctx.fillRect(-bw-aw-1,bh*0.38,aw*0.85,bh*0.18);
+  ctx.fillStyle=ch.skin;ctx.beginPath();ctx.arc(-bw-aw/2,bh*0.56,aw*0.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(bw+aw/2,bh*0.56+au,aw*0.5,0,Math.PI*2);ctx.fill();
+  if(screen=='forest'&&chopping){ctx.fillStyle='#6a4a2a';ctx.fillRect(bw+aw+6,bh*0.08+au-bh*0.22,6,bh*0.5);ctx.fillStyle='#999';ctx.fillRect(bw+aw-4,bh*0.08+au-bh*0.28,24,14)}
+  let hr=bh*0.28;
+  ctx.fillStyle=ch.skin;ctx.beginPath();ctx.arc(0,-bh*0.1,hr,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=ch.hair;
+  if(isF){ctx.beginPath();ctx.arc(0,-bh*0.1,hr+3,Math.PI,0);ctx.fill();ctx.fillRect(-hr-3,-bh*0.1,hr*0.4,bh*0.3);ctx.fillRect(hr+3-hr*0.4,-bh*0.1,hr*0.4,bh*0.3)}
+  else{ctx.beginPath();ctx.arc(0,-bh*0.18,hr*1.08,Math.PI,Math.PI*2);ctx.fill()}
+  let fs=Math.floor(hr*0.8);
+  ctx.fillStyle='#000';ctx.font=fs+'px monospace';ctx.textAlign='center';ctx.fillText(ch.eyes,0,-bh*0.06);
+  ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,-bh*0.01,hr*0.15+Math.min(12,m.chest*0.1)*0.1,0.1,Math.PI-0.1);ctx.stroke();
+  ctx.fillStyle=ch.skin;ctx.fillRect(-bh*0.06,-bh*0.01,bh*0.12,bh*0.1);
   ctx.restore();
 }
 
-// ========== 画树 ==========
 function drawTree(t){
   let tp=TREE_TYPES[t.ti];
   ctx.save();ctx.translate(t.x,t.y);
@@ -286,8 +262,11 @@ function draw(){
 
   if(screen==='select'){
     ctx.fillStyle='#1a2a3a';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(20,W*.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('选人',W/2,H*.12);
-    for(let i=0;i<3;i++){ctx.save();let ci=characterIndex;characterIndex=i;drawDude(W*.25+i*W*.25,H*.42,.7);characterIndex=ci;ctx.restore();ctx.fillStyle=i===characterIndex?'#ff0':'#888';ctx.font='10px PingFang SC,Microsoft YaHei,sans-serif';ctx.fillText(chars[i].name,W*.25+i*W*.25,H*.47)}
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(20,W*.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('选择角色',W/2,H*.1);
+    let n=chars.length;let bw=Math.min(80,W*.17);let gap=8;let row=n<5?1:2;let perRow=Math.ceil(n/row);
+    for(let i=0;i<n;i++){let r=Math.floor(i/perRow);let c=i%perRow;let sx=W/2-(perRow*(bw+gap)-gap)/2;let x=sx+c*(bw+gap),y=H*.32+r*(H*.25);
+      ctx.save();let ci=characterIndex;characterIndex=i;drawDude(x,y,.45);characterIndex=ci;ctx.restore();
+      ctx.fillStyle=i===characterIndex?'#ff0':'#888';ctx.font='8px PingFang SC,Microsoft YaHei,sans-serif';ctx.textAlign='center';ctx.fillText(chars[i].name,x,y-30);}
   }
 
   if(screen==='forest'){
