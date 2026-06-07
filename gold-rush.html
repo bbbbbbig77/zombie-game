@@ -170,17 +170,20 @@ function update(){
   // 单位AI
   for(let u of units){
     if(u.HP<=0||u.atkCD>0){u.atkCD=Math.max(0,u.atkCD-1);continue}
-    let enemies=u.owner==='player'?
-      [...units.filter(v=>v.owner==='enemy'&&v.HP>0),...barracks.filter(b=>b.owner==='enemy'&&b.HP>0)]:
-      [...units.filter(v=>v.owner==='player'&&v.HP>0),...barracks.filter(b=>b.owner==='player'&&b.HP>0)];
+    let rawEnemies=u.owner==='player'?
+      [...units.filter(v=>v.owner==='enemy'&&v.HP>0),...barracks.filter(b=>b.owner==='enemy'&&b.HP>0),...farmers.filter(f=>f.side==='enemy')]:
+      [...units.filter(v=>v.owner==='player'&&v.HP>0),...barracks.filter(b=>b.owner==='player'&&b.HP>0),...farmers.filter(f=>f.side==='player')];
+    let enemies=rawEnemies.filter(e=>e.HP===undefined||e.HP>0); // 农民无HP，直接可攻击
     let home=u.owner==='player'?enemyBase:base;
+    let homeDist=Math.hypot(u.x-home.x,u.y-home.y);
 
     // 找最近敌人
     let best=null,bestD=99999;
     for(let e of enemies){let d=Math.hypot(u.x-e.x,u.y-e.y);if(d<bestD){bestD=d;best=e}}
-    let homeD=Math.hypot(u.x-home.x,u.y-home.y);
+    // 如果基地比敌人更近，直接攻击基地
+    if(homeDist<bestD){best=null;bestD=homeDist}
 
-    if(best&&bestD<homeD+40){u.tx=best.x;u.ty=best.y;u.target=best}
+    if(best){u.tx=best.x;u.ty=best.y;u.target=best}
     else{u.tx=home.x;u.ty=home.y;u.target=null}
 
     let dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
@@ -190,9 +193,12 @@ function update(){
     if(d>rng){let nx=u.x+dx/d*u.spd,ny=u.y+dy/d*u.spd;if(!blocked(nx,u.r)){u.x=nx;u.y=ny}}
 
     // 攻击
-    if(d<=rng+8){
-      if(u.target&&u.target.HP>0){u.target.HP-=u.atk;u.atkCD=u.range?50:35}
-      else if(d<=home.r+10){if(u.owner==='player')enemyHP-=u.atk;else baseHP-=u.atk;u.atkCD=35}
+    if(d<=Math.max(rng+8,20)){
+      if(u.target&&(u.target.HP===undefined||u.target.HP>0)){
+        if(u.target.HP!==undefined)u.target.HP-=u.atk; // 兵营/单位
+        u.atkCD=u.range?50:35;
+      }
+      else if(d<=home.r+16){if(u.owner==='player')enemyHP-=u.atk;else baseHP-=u.atk;u.atkCD=35}
     }
   }
   units=units.filter(u=>u.HP>0);
