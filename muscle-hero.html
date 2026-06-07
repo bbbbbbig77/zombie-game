@@ -19,6 +19,52 @@ let W,H;
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight;W=canvas.width;H=canvas.height}
 resize();window.addEventListener('resize',resize);
 
+// ========== BGM 放松音乐 ==========
+let bgmOn=false, bgmCtx=null, bgmGain=null;
+function toggleBGM(){
+  if(!bgmCtx){initBGM()}
+  bgmOn=!bgmOn;
+  if(bgmGain)bgmGain.gain.value=bgmOn?0.12:0;
+}
+function initBGM(){
+  try{
+    bgmCtx=new(window.AudioContext||window.webkitAudioContext)();
+    bgmGain=bgmCtx.createGain();bgmGain.gain.value=0.12;bgmGain.connect(bgmCtx.destination);
+    // 主旋律: 放松的钢鼓感觉
+    playBassLoop();playChordLoop();playMelodyLoop();
+  }catch(e){}
+}
+function playNote(freq,start,dura,vol,type='triangle'){
+  if(!bgmCtx)return;
+  let o=bgmCtx.createOscillator(),g=bgmCtx.createGain();
+  o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,bgmCtx.currentTime+start);
+  g.gain.exponentialRampToValueAtTime(0.001,bgmCtx.currentTime+start+dura);
+  o.connect(g);g.connect(bgmGain);o.start(bgmCtx.currentTime+start);o.stop(bgmCtx.currentTime+start+dura);
+}
+function playBassLoop(){
+  let notes=[65.4,73.4,82.4,73.4,65.4,55.0,49.0,55.0]; // C2-D2-E2-D2-C2-A1-G1-A1
+  function loop(){
+    for(let i=0;i<notes.length;i++){let t=i*1.2;playNote(notes[i],t,0.8,0.25,'sine')}
+    setTimeout(()=>{if(bgmOn)loop()},notes.length*1200);
+  }loop();
+}
+function playChordLoop(){
+  let chords=[[130.8,164.8,196.0],[146.8,174.6,220.0],[164.8,196.0,246.9],[130.8,164.8,196.0],[110.0,130.8,164.8],[98.0,123.5,146.8]];
+  function loop(){
+    for(let i=0;i<chords.length;i++){
+      for(let n of chords[i])playNote(n,i*2.4,2.2,0.06,'sine');
+    }
+    setTimeout(()=>{if(bgmOn)loop()},chords.length*2400);
+  }loop();
+}
+function playMelodyLoop(){
+  let melody=[261.6,293.7,329.6,349.2,392.0,349.2,329.6,293.7,261.6,220.0,246.9,261.6,293.7,261.6,246.9,220.0];
+  function loop(){
+    for(let i=0;i<melody.length;i++){let t=i*1.8+Math.random()*0.15;playNote(melody[i],t,0.5,0.04,'triangle')}
+    setTimeout(()=>{if(bgmOn)loop()},melody.length*1800+8000); // 间隔长
+  }loop();
+}
+
 // ========== 游戏数据 ==========
 let gold=0, screen='home', characterIndex=0, particles=[], buttons=[];
 let muscles={upper:0,chest:0,abs:0,legs:0};
@@ -88,7 +134,10 @@ function checkExp(){
 // ========== 屏幕 ==========
 function goTo(s){
   screen=s;buttons=[];
-  if(s==='home'){btn(W*.25,H*.66,Math.min(180,W*.5),60,'🪓 撸树赚钱','#4a8',()=>goTo('forest'));btn(W*.25,H*.66+68,Math.min(180,W*.5),60,'🏋️ 撸铁猛干','#48a',()=>goTo('iron'));btn(W*.25,H*.66+136,Math.min(180,W*.5),44,'👤 换人','#888',()=>goTo('select'));}
+  if(s==='home'){if(!bgmCtx)initBGM();if(!bgmOn)toggleBGM(); // 自动开BGM
+    btn(W*.25,H*.66,Math.min(180,W*.5),60,'🪓 撸树赚钱','#4a8',()=>goTo('forest'));btn(W*.25,H*.66+68,Math.min(180,W*.5),60,'🏋️ 撸铁猛干','#48a',()=>goTo('iron'));btn(W*.25,H*.66+136,Math.min(180,W*.5),44,'👤 换人','#888',()=>goTo('select'));
+    // BGM按钮
+    btn(W-50,8,42,26,'🎵','rgba(255,255,255,.15)',()=>toggleBGM());}
   if(s==='select'){for(let i=0;i<3;i++){let bw=Math.min(130,W*.28);let idx=i;btn(W/2-bw*1.6+i*bw*1.1,H*.55,bw,76,chars[i].name,'#555',()=>{characterIndex=idx;goTo('home')})}btn(W/2-50,H*.7,100,38,'← 返回','#555',()=>goTo('home'))}
   if(s==='forest'){player.x=W/2;player.y=H*.65;spawnForest();btn(W/2-50,H*.94,100,36,'← 回主页','#555',()=>goTo('home'));}
   if(s==='iron'){btn(W/2-70,H*.65,140,46,'🏗️ 即将开放','#555',null);btn(W/2-50,H*.76,100,36,'← 返回','#555',()=>goTo('home'))}
