@@ -95,68 +95,66 @@ function goTo(s){
 
 function btn(x,y,w,h,text,color,cb){buttons.push({x,y,w,h,text,color,cb})}
 
-// ========== 画人(大号竖屏版) ==========
-function drawDude(cx,cy,s){
-  let z=s||1; let m=muscles; let ch=chars[characterIndex];
-  let bh=Math.min(90,W*.3)*z; // 身体高度基准
+// ========== 画人（占屏幕3/4） ==========
+function drawDude(cx,cy,z){
+  let s=z||1;let m=muscles;let ch=chars[characterIndex];
+  // bh = 人物身体占屏幕75%
+  let bh=Math.min(H*0.5,W*3)*s;
   ctx.save();ctx.translate(cx,cy);
-
   // 阴影
-  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(0,bh*0.9,bh*0.5+m.legs*bh*0.008,bh*0.08,0,0,Math.PI*2);ctx.fill();
-
-  // 腿
-  let legW=bh*0.15+m.legs*bh*0.012, legH=bh*0.55;
-  let thighW=legW*1.2;
-  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.2-thighW/2,bh*0.38,thighW,legH);
-  ctx.fillStyle=ch.color;ctx.fillRect(bh*0.2-thighW/2,bh*0.38,thighW,legH);
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,bh*0.85,bh*0.55+m.legs*bh*0.01,bh*0.07,0,0,Math.PI*2);ctx.fill();
+  // 脚
+  ctx.fillStyle='#444';ctx.fillRect(-bh*0.18,bh*1.02,bh*0.4,8);ctx.fillRect(bh*0.08,bh*1.02,bh*0.4,8);
   // 小腿
-  ctx.fillStyle='#666';ctx.fillRect(-bh*0.2-legW/2,bh*0.85,legW,bh*0.25);
-  ctx.fillStyle='#666';ctx.fillRect(bh*0.2-legW/2,bh*0.85,legW,bh*0.25);
-  // 鞋子
-  ctx.fillStyle='#444';ctx.fillRect(-bh*0.2-legW/2-3,bh*1.08,legW+6,bh*0.1);ctx.fillRect(bh*0.2-legW/2-3,bh*1.08,legW+6,bh*0.1);
+  let calfW=bh*0.13+m.legs*bh*0.01;
+  ctx.fillStyle='#555';ctx.fillRect(-bh*0.12,bh*0.8,calfW,bh*0.25); //左
+  ctx.fillStyle='#555';ctx.fillRect(bh*0.12-calfW,bh*0.8,calfW,bh*0.25); //右
+  // 大腿
+  let thighW=calfW*1.3, thighH=bh*0.4;
+  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.15,bh*0.42,thighW,thighH);
+  ctx.fillStyle=ch.color;ctx.fillRect(bh*0.15-thighW,bh*0.42,thighW,thighH);
+  // 短裤
+  ctx.fillStyle='#335';ctx.fillRect(-bh*0.22,bh*0.4,bh*0.44,bh*0.12);ctx.fillRect(bh*0.05,bh*0.4,bh*0.44,bh*0.12);ctx.fillRect(-bh*0.1,bh*0.38,bh*0.2,bh*0.04);
 
   // 身体
-  let bodyW=bh*0.3+m.chest*bh*0.012;
-  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW,bh*0.05,bodyW*2,bh*0.45);
-  // 背心纹理
-  ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(-bodyW*0.7,bh*0.1,bodyW*1.4,bh*0.35);
-
-  // 胸肌
-  if(m.chest>10){
-    ctx.fillStyle='rgba(0,0,0,0.12)';ctx.beginPath();ctx.moveTo(0,bh*0.08);ctx.lineTo(0,bh*0.3);ctx.stroke();
-    ctx.fillStyle='rgba(180,140,120,0.4)';ctx.beginPath();ctx.arc(-bodyW*0.25,bh*0.15,bodyW*0.3,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(bodyW*0.25,bh*0.15,bodyW*0.3,0,Math.PI*2);ctx.fill();
-  }
-  // 腹肌
-  if(m.abs>15){ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1;let n=Math.floor(m.abs/18);for(let i=1;i<=Math.min(n,6);i++){ctx.beginPath();ctx.moveTo(-bodyW*0.6,bh*0.18+bh*0.05*i);ctx.lineTo(bodyW*0.6,bh*0.18+bh*0.05*i);ctx.stroke()}ctx.beginPath();ctx.moveTo(0,bh*0.18);ctx.lineTo(0,bh*0.18+bh*0.05*Math.min(n,6));ctx.stroke()}
+  let bodyW=bh*0.32+m.chest*bh*0.014;
+  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW,bh*0.0,bodyW*2,bh*0.5);
+  // 背心
+  ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fillRect(-bodyW*0.7,bh*0.05,bodyW*1.4,bh*0.38);
+  // 胸肌(分块)
+  if(m.chest>8){ctx.fillStyle='rgba(0,0,0,0.1)';ctx.beginPath();ctx.moveTo(0,bh*0.06);ctx.lineTo(0,bh*0.28);ctx.stroke();ctx.fillStyle='rgba(200,160,130,0.35)';ctx.beginPath();ctx.arc(-bodyW*0.22,bh*0.12,bodyW*0.35,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(bodyW*0.22,bh*0.12,bodyW*0.35,0,Math.PI*2);ctx.fill()}
+  // 腹肌(6块)
+  if(m.abs>10){ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1.5;let n=Math.min(6,Math.floor(m.abs/15));for(let i=1;i<=n;i++){ctx.beginPath();ctx.moveTo(-bodyW*0.55,bh*0.2+bh*0.06*i);ctx.lineTo(bodyW*0.55,bh*0.2+bh*0.06*i);ctx.stroke()}ctx.beginPath();ctx.moveTo(0,bh*0.2);ctx.lineTo(0,bh*0.2+bh*0.06*n);ctx.stroke()}
+  // 侧腹/鲨鱼线
+  if(m.abs>40){ctx.strokeStyle='rgba(0,0,0,0.1)';ctx.beginPath();ctx.moveTo(-bodyW*0.7,bh*0.25);ctx.lineTo(-bodyW*0.3,bh*0.42);ctx.stroke();ctx.beginPath();ctx.moveTo(bodyW*0.7,bh*0.25);ctx.lineTo(bodyW*0.3,bh*0.42);ctx.stroke()}
 
   // 手臂
-  let armW=bh*0.1+m.upper*bh*0.01, armH=bh*0.4;
-  // 左臂
-  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW-armW-2,bh*0.06,armW,armH);
-  // 右臂(如果正在砍树挥更高)
-  let armUp=(screen==='forest'&&chopping&&chopCD>CHOP_INT*0.7)?-bh*0.3:0;
-  ctx.fillStyle=ch.color;ctx.fillRect(bodyW+2,bh*0.06+armUp,armW,armH);
-  // 肱二头肌突起
-  if(m.upper>25){
-    ctx.fillStyle='rgba(255,200,150,0.5)';ctx.beginPath();ctx.arc(bodyW+armW/2,bh*0.18+armUp,armW*0.7,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(-bodyW-armW/2,bh*0.18,armW*0.7,0,Math.PI*2);ctx.fill();
-  }
+  let armW=bh*0.1+m.upper*bh*0.012, armH=bh*0.38;
+  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW-armW-3,bh*0.04,armW,armH); //左臂自然下垂
+  // 右臂(砍树时举斧)
+  let au=(screen==='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-bh*0.25:0;
+  ctx.fillStyle=ch.color;ctx.fillRect(bodyW+3,bh*0.04+au,armW,armH);
+  // 肱二头肌
+  if(m.upper>20){ctx.fillStyle='rgba(255,210,160,0.55)';ctx.beginPath();ctx.arc(bodyW+armW/2,bh*0.14+au,armW*0.8,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-bodyW-armW/2,bh*0.14,armW*0.8,0,Math.PI*2);ctx.fill()}
+  // 前臂
+  ctx.fillStyle=ch.color;ctx.fillRect(bodyW+3,bh*0.38+au,armW*0.85,bh*0.18);
+  ctx.fillRect(-bodyW-armW-1,bh*0.38,armW*0.85,bh*0.18);
+  // 拳头
+  ctx.fillStyle='#fdb';ctx.beginPath();ctx.arc(-bodyW-armW/2,bh*0.56,armW*0.55,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(bodyW+armW/2,bh*0.56+au,armW*0.55,0,Math.PI*2);ctx.fill();
+
   // 斧头(右臂上方)
-  if(screen==='forest'&&chopping){
-    ctx.fillStyle='#7a5a3a';ctx.fillRect(bodyW+armW+5,bh*0.05+armUp-bh*0.2,6,bh*0.5);
-    ctx.fillStyle='#999';ctx.fillRect(bodyW+armW-3,bh*0.05+armUp-bh*0.25,22,12);
-  }
+  if(screen==='forest'&&chopping){ctx.fillStyle='#6a4a2a';ctx.fillRect(bodyW+armW+6,bh*0.08+au-bh*0.22,6,bh*0.5);ctx.fillStyle='#999';ctx.fillRect(bodyW+armW-4,bh*0.08+au-bh*0.28,24,14)}
 
   // 头
-  let hr=bh*0.32;
-  ctx.fillStyle=ch.color;ctx.beginPath();ctx.arc(0,-bh*0.08,hr,0,Math.PI*2);ctx.fill();
-  // 头发
-  ctx.fillStyle='#333';ctx.beginPath();ctx.arc(0,-bh*0.15,hr*1.05,Math.PI,0);ctx.fill();
-  // 脸
-  ctx.fillStyle='#000';ctx.font=`${hr*0.7}px monospace`;ctx.textAlign='center';ctx.fillText(ch.emoji,0,-bh*0.06);
-  // 脖子
-  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.06,-bh*0.02,bh*0.12,bh*0.1);
+  let hr=bh*0.3;
+  ctx.fillStyle=ch.color;ctx.beginPath();ctx.arc(0,-bh*0.1,hr,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2a2a2a';ctx.beginPath();ctx.arc(0,-bh*0.18,hr*1.08,Math.PI,Math.PI*2);ctx.fill(); //头发
+  ctx.fillStyle='#000';ctx.font=`${hr*0.75}px monospace`;ctx.textAlign='center';ctx.fillText(ch.emoji,0,-bh*0.08);
+  // 粗脖子
+  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.07,-bh*0.01,bh*0.14,bh*0.1);
+  // 下巴(方下巴)
+  if(muscles.chest>30){ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.08,bh*0.12,bh*0.16,bh*0.04)}
 
   ctx.restore();
 }
@@ -206,16 +204,9 @@ function update(){
       if(!forestTrees.filter(t=>t.hp>0).some(t=>Math.hypot(rx-t.x,ry-t.y)<tp.r+10))forestTrees.push({x:rx,y:ry,hp:tp.hp,maxHP:tp.hp,ti,r:tp.r});
     }
 
-    // 检测附近树
-    if(chopping&&chopping.hp>0){
-      if(Math.hypot(player.x-chopping.x,player.y-chopping.y)<chopping.r+60){
-        if(chopCD<=0)chop(chopping);
-      }else{chopping=null}
-    }
-    if(!chopping||chopping.hp<=0){
-      chopping=forestTrees.filter(t=>t.hp>0).find(t=>Math.hypot(player.x-t.x,player.y-t.y)<t.r+32)||null;
-    }
-    if(chopping&&chopping.hp<=0)chopping=null;
+    // 简单：如果有选中的树就砍
+    if(chopping&&chopping.hp>0){if(chopCD<=0)chop(chopping)}
+    else chopping=null;
   }
 
   // 粒子
@@ -230,14 +221,16 @@ function draw(){
   if(screen==='home'){
     let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a3a5a');g.addColorStop(1,'#1a2a3a');
     ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(26,W*.065)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';
-    ctx.fillText('💪 肌肉英雄',W/2,H*.08);
-    ctx.fillText(chars[characterIndex].name,W/2,H*.15);
-    drawDude(W/2,H*.48,1);
-    // 肌肉条
+    // ★主角占正中75%屏幕★
+    drawDude(W/2,H*.42,.95);
+    // 名字
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(22,W*.06)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';
+    ctx.fillText(chars[characterIndex].name,W/2,H*.1);
+    // 金币在脚底
+    ctx.fillStyle='#ffd700';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText('🪙 '+gold,W/2,H*.78);
+    // 肌肉条放底部
     let bars=['upper','chest','abs','legs'],names=['💪上肢','🦾胸肌','🥓腹肌','🦵下肢'];
-    for(let i=0;i<4;i++){let m=muscles[bars[i]];ctx.fillStyle='#fff';ctx.font='10px monospace';ctx.textAlign='left';ctx.fillText(names[i]+' Lv'+Math.floor(m),W*.12,H*.47+i*18);ctx.fillStyle='#333';ctx.fillRect(W*.4,H*.462+i*18,W*.45,8);ctx.fillStyle=m>70?'#ff0':(m>40?'#fa0':(m>15?'#f80':'#f60'));ctx.fillRect(W*.4,H*.462+i*18,W*.45*(m/100),8)}
-    ctx.fillStyle='#ffd700';ctx.font='bold 15px monospace';ctx.textAlign='center';ctx.fillText('🪙 '+gold,W/2,H*.63);
+    for(let i=0;i<4;i++){let m=muscles[bars[i]];ctx.fillStyle='#fff';ctx.font='9px monospace';ctx.textAlign='left';ctx.fillText(names[i]+' Lv'+Math.floor(m),W*.06,H*.82+i*17);ctx.fillStyle='#333';ctx.fillRect(W*.35,H*.815+i*17,W*.55,8);ctx.fillStyle=m>70?'#ff0':(m>40?'#fa0':(m>15?'#f80':'#f60'));ctx.fillRect(W*.35,H*.815+i*17,W*.55*(m/100),8)}
   }
 
   if(screen==='select'){
@@ -247,32 +240,26 @@ function draw(){
   }
 
   if(screen==='forest'){
-    // 天空
-    let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#4a8ade');g.addColorStop(.5,'#7ab8ff');g.addColorStop(.75,'#3a6a1e');g.addColorStop(1,'#2a4a0e');
+      // 天空
+    let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#5a9ae0');g.addColorStop(.6,'#b8d8f8');g.addColorStop(1,'#3a7a2e');
     ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    // 远处的树影
-    for(let i=0;i<12;i++){ctx.fillStyle='rgba(0,60,0,.15)';ctx.beginPath();ctx.arc(W*(.05+i*.09),H*.25,40+Math.sin(i*1.5)*25,0,Math.PI*2);ctx.fill()}
-    // 地面
-    ctx.fillStyle='#4a8a2a';ctx.fillRect(0,H*.55,W,H*.45);
-    ctx.fillStyle='#3a6a1a';ctx.fillRect(0,H*.7,W,H*.3);
-    // 森林中的树
+    for(let i=0;i<10;i++){ctx.fillStyle='rgba(255,255,255,.12)';ctx.beginPath();ctx.arc(W*(.08+i*.1),H*(.06+Math.sin(i)*.03),W*.06,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle='#5a9a3a';ctx.fillRect(0,H*.62,W,H*.38);
+    ctx.fillStyle='#4a7a2a';ctx.fillRect(0,H*.78,W,H*.22);
+    // 树
     for(let t of forestTrees){if(t.hp<=0)continue;drawTree(t)}
-    // 倒下的树
-    for(let t of forestTrees){if(t.hp>0)continue;ctx.fillStyle='rgba(100,100,100,.35)';ctx.fillRect(t.x-t.r*.2,t.y-t.r*.3,t.r*.4,t.r*2.5);ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText('🪵',t.x,t.y-3)}
-    // 人物
-    drawDude(player.x,player.y,.85);
+    for(let t of forestTrees){if(t.hp>0)continue;ctx.fillStyle='rgba(100,100,100,.3)';ctx.fillRect(t.x-3,t.y-5,6,16);ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText('🪵',t.x,t.y-6)}
+    // 角色(正常大小)
+    drawDude(player.x,player.y,.5);
     // 粒子
-    for(let p of particles){ctx.globalAlpha=Math.min(1,p.life/22);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();if(p.text){ctx.fillStyle='#ffd700';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(p.text,p.x,p.y-5)}ctx.globalAlpha=1}
-    // 摇杆
-    if(joystickActive){ctx.globalAlpha=.25;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(joystickBaseX,joystickBaseY,45,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#aaa';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#ccc';ctx.beginPath();ctx.arc(joystickBaseX+joystickDx,joystickBaseY+joystickDy,22,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+    for(let p of particles){ctx.globalAlpha=Math.min(1,p.life/22);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();if(p.text){ctx.fillStyle='#ffd700';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.fillText(p.text,p.x,p.y-5)}ctx.globalAlpha=1}
     // HUD
-    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,0,W,26);
-    ctx.fillStyle='#ffd700';ctx.font='bold 13px monospace';ctx.textAlign='left';ctx.fillText('🪙'+gold,W*.02,18);
-    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText('🌳'+forestTrees.filter(t=>t.hp>0).length,W/2,18);
-    ctx.fillStyle='#afa';ctx.textAlign='right';ctx.fillText('💪'+muscles.upper,W*.98,18);
-    // 站在树边提示
-    if(!chopping){ctx.fillStyle='rgba(255,255,255,.5)';ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText('👆拖动左边移动人物  走到树边自动砍',W/2,H*.88)}
-    if(chopping&&chopping.hp>0){let tp=TREE_TYPES[chopping.ti];ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(tp.name+' 每斧💰'+Math.max(1,Math.floor(tp.gold*(Math.floor(3+muscles.upper*.3+muscles.chest*.15)/tp.hp))),W/2,H*.88)}
+    ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(0,0,W,22);
+    ctx.fillStyle='#ffd700';ctx.font='bold 11px monospace';ctx.textAlign='left';ctx.fillText('🪙'+gold,W*.02,15);
+    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText('🌳'+forestTrees.filter(t=>t.hp>0).length,W/2,15);
+    ctx.fillStyle='#afa';ctx.textAlign='right';ctx.fillText('💪'+Math.floor(muscles.upper),W*.98,15);
+    if(!chopping){ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText('👆 点击树 → 自动砍',W/2,H*.9)}
+    if(chopping&&chopping.hp>0){let tp=TREE_TYPES[chopping.ti];ctx.fillStyle='#ffd700';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText(tp.name+' '+Math.max(1,Math.floor(tp.gold*(Math.floor(3+muscles.upper*.3+muscles.chest*.15)/tp.hp)))+'/斧',W/2,H*.9)}
   }
 
   if(screen==='iron'){
@@ -285,64 +272,31 @@ function draw(){
   for(let b of buttons){ctx.fillStyle=b.color;ctx.globalAlpha=.85;ctx.fillRect(b.x,b.y,b.w,b.h);ctx.globalAlpha=1;ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1.5;ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(12,b.w*.12)}px monospace`;ctx.textAlign='center';ctx.fillText(b.text,b.x+b.w/2,b.y+b.h/2+4)}
 }
 
-// ========== 输入 ==========
-canvas.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  for(let t of e.changedTouches){
-    let x=t.clientX,y=t.clientY;
-    if(screen==='forest'&&x<W*.45){
-      joystickActive=true;joystickId=t.identifier;
-      joystickBaseX=x;joystickBaseY=y;joystickDx=0;joystickDy=0;
-    }
-  }
-},{passive:false});
-canvas.addEventListener('touchmove',e=>{
-  e.preventDefault();
-  for(let t of e.changedTouches){
-    if(joystickActive&&t.identifier===joystickId){
-      joystickDx=t.clientX-joystickBaseX;joystickDy=t.clientY-joystickBaseY;
-    }
-  }
-},{passive:false});
-canvas.addEventListener('touchend',e=>{
-  for(let t of e.changedTouches){
-    if(joystickActive&&t.identifier===joystickId){joystickActive=false;joystickId=null;joystickDx=0;joystickDy=0}
-  }
-  // 非摇杆区域的点击=按钮
-  if(screen==='forest')return; // 森林里按钮处理在touchstart
-});
-
+// ========== 输入（简单点击模式） ==========
 canvas.addEventListener('click',e=>{
-  if(screen==='forest'&&e.offsetX<W*.45)return; // 摇杆区不处理
   let mx=e.offsetX,my=e.offsetY;
+  // 森林：点树=开始砍
+  if(screen==='forest'){
+    let t=forestTrees.find(t=>t.hp>0&&Math.hypot(mx-t.x,my-t.y)<t.r+20);
+    if(t){chopping=t;chopCD=0;chop(t);return}
+  }
+  // 按钮
   for(let b of buttons){if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h&&b.cb){b.cb();return}}
 });
 canvas.addEventListener('touchstart',e=>{
-  // 第二次touchstart处理非摇杆点击
-  for(let t of e.changedTouches){
-    if(!(screen==='forest'&&t.clientX<W*.45)){
-      let r=canvas.getBoundingClientRect();
-      let mx=t.clientX-r.left,my=t.clientY-r.top;
-      for(let b of buttons){if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h&&b.cb){b.cb();return}}
-    }
+  e.preventDefault();
+  let r=canvas.getBoundingClientRect();
+  let mx=e.touches[0].clientX-r.left,my=e.touches[0].clientY-r.top;
+  // 森林：点树
+  if(screen==='forest'){
+    let t=forestTrees.find(t=>t.hp>0&&Math.hypot(mx-t.x,my-t.y)<t.r+20);
+    if(t){chopping=t;chopCD=0;chop(t);return}
   }
+  // 按钮
+  for(let b of buttons){if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h&&b.cb){b.cb();return}}
 },{passive:false});
 
-// PC键盘
-let keys={};
-window.addEventListener('keydown',e=>{keys[e.key]=true});
-window.addEventListener('keyup',e=>{keys[e.key]=false});
-function updateKeys(){
-  if(screen!=='forest')return;
-  let dx=0,dy=0;
-  if(keys['w']||keys['ArrowUp'])dy=-1;
-  if(keys['s']||keys['ArrowDown'])dy=1;
-  if(keys['a']||keys['ArrowLeft'])dx=-1;
-  if(keys['d']||keys['ArrowRight'])dx=1;
-  if(dx||dy){let d=Math.hypot(dx,dy);player.x+=dx/d*player.speed;player.y+=dy/d*player.speed}
-}
-
-function loop(){updateKeys();update();draw();requestAnimationFrame(loop)}
+function loop(){update();draw();requestAnimationFrame(loop)}
 goTo('home');loop();
 </script>
 </body>
