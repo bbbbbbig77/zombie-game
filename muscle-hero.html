@@ -22,7 +22,7 @@ resize();window.addEventListener('resize',resize);
 // ========== 游戏数据 ==========
 let gold=0, screen='home', characterIndex=0, particles=[], buttons=[];
 let muscles={upper:0,chest:0,abs:0,legs:0};
-let xpData={upper:0,chest:0,abs:0,legs:0}, xpToNext=80;
+let xpData={upper:0,chest:0,abs:0,legs:0}, xpToNext=200;
 
 // 角色位置 & 移动
 let player={x:0,y:0,tx:0,ty:0,moving:false,speed:2.5};
@@ -30,14 +30,14 @@ let joystickActive=false, joystickId=null, joystickBaseX=0,joystickBaseY=0,joyst
 
 // 树
 const TREE_TYPES=[
-  {name:'🌱小树苗',hp:25,gold:12,color:'#6b8a3a',r:22,xp:4},
-  {name:'🌲松树',hp:70,gold:35,color:'#4a7a2a',r:30,xp:8},
-  {name:'🌳橡树',hp:180,gold:90,color:'#6a5a2a',r:38,xp:16},
-  {name:'🪵铁木',hp:450,gold:220,color:'#7a5a2a',r:46,xp:35},
-  {name:'🔥神木',hp:1200,gold:600,color:'#ee6644',r:55,xp:70},
+  {name:'🌱小树苗',hp:25,gold:12,color:'#6b8a3a',r:22,xp:0.3},
+  {name:'🌲松树',hp:70,gold:35,color:'#4a7a2a',r:30,xp:0.8},
+  {name:'🌳橡树',hp:180,gold:90,color:'#6a5a2a',r:38,xp:1.5},
+  {name:'🪵铁木',hp:450,gold:220,color:'#7a5a2a',r:46,xp:3},
+  {name:'🔥神木',hp:1200,gold:600,color:'#ee6644',r:55,xp:8},
 ];
 let forestTrees=[], chopping=null, chopCD=0, chopGain=0;
-const CHOP_INT=32;
+const CHOP_INT=45;
 
 const chars=[
   {name:'呆萌小明',emoji:'😶',color:'#ffcc88'},
@@ -71,7 +71,7 @@ function chop(t){
   t.hp-=dmg;
   let hitGold=Math.max(1,Math.floor(tp.gold*(dmg/tp.hp)));
   chopGain=hitGold; gold+=hitGold;
-  xpData.upper+=tp.xp*0.3;
+  xpData.upper+=tp.xp*0.15;
   for(let i=0;i<3;i++)particles.push({x:t.x+Math.random()*8,y:t.y,vx:(Math.random()-0.5)*4,vy:-1-Math.random()*4,life:14,color:'#8b5a2b',r:2+Math.random()*2});
   if(hitGold>5)particles.push({x:player.x,y:player.y-20,vx:0,vy:-2,life:18,color:'#ffd700',r:0,text:'💰+'+hitGold});
   if(t.hp<=0){t.hp=0;chopping=null;xpData.upper+=tp.xp*0.7;
@@ -79,7 +79,7 @@ function chop(t){
 }
 function checkExp(){
   for(let k of Object.keys(xpData)){
-    if(xpData[k]>=xpToNext&&muscles[k]<100){xpData[k]-=xpToNext;muscles[k]=Math.min(100,muscles[k]+4);xpToNext+=15}
+    if(xpData[k]>=xpToNext&&muscles[k]<100){xpData[k]-=xpToNext;muscles[k]=Math.min(100,muscles[k]+1);xpToNext+=30}
   }
 }
 
