@@ -151,182 +151,67 @@ function btn(x,y,w,h,text,color,cb){buttons.push({x,y,w,h,text,color,cb})}
 
 // ========== 画人（占屏幕3/4） ==========
 function drawDude(cx,cy,z){
-  let s=z||1;let m=muscles;let ch=chars[characterIndex];
+  let m=muscles;let ch=chars[characterIndex];
   let isF=ch.gender=='female';
-  let WID=48, HGT=72; // 48x72像素网格
-  let px=(screen==='home')?Math.min(H*0.75/HGT,W*0.8/WID):Math.min(H*0.4/HGT,W*0.5/WID);
-  let grid=[];for(let r=0;r<HGT;r++){grid[r]=[];for(let c=0;c<WID;c++)grid[r][c]=0}
+  let ps=Math.min(H*0.6/40,W*0.7/24); // pixel size
+  let GW=24,GH=40; // grid
+  let g=[];for(let r=0;r<GH;r++){g[r]=[];for(let c=0;c<GW;c++)g[r][c]=0}
 
-  function box(x,y,w,h,v){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<HGT&&c>=0&&c<WID)grid[r][c]=v}
-  function S(x,y,w,h){box(x,y,w,h,1)}  // skin
-  function H(x,y,w,h){box(x,y,w,h,2)}  // hair
-  function C(x,y,w,h){box(x,y,w,h,3)}  // cloth
-  function M(x,y,w,h){box(x,y,w,h,4)}  // muscle line
-  function E(x,y,w,h){box(x,y,w,h,5)}  // eye
-  function Sh(x,y,w,h){box(x,y,w,h,6)} // shoe
-  function Sk(x,y,w,h){box(x,y,w,h,7)} // skin shadow
+  // helper
+  function B(x,y,w,h,v){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<GH&&c>=0&&c<GW)g[r][c]=v}
+  let S=(x,y,w,h)=>B(x,y,w,h,1); // skin
+  let Hr=(x,y,w,h)=>B(x,y,w,h,2); // hair
+  let C=(x,y,w,h)=>B(x,y,w,h,3); // cloth
+  let E=(x,y,w,h)=>B(x,y,w,h,4); // eye
+  let M=(x,y,w,h)=>B(x,y,w,h,5); // muscle
 
-  let cx2=Math.floor(WID/2);
-  let ag=Math.floor(m.upper*0.25);  // arm growth
-  let cg=Math.floor(m.chest*0.2);   // chest growth
-  let lg=Math.floor(m.legs*0.16);   // leg growth
-  let abg=Math.floor(m.abs*0.16);
+  let mid=12; // center
+  let ag=Math.floor(m.upper*0.1); // arm growth
+  let cg=Math.floor(m.chest*0.09);
+  let lg=Math.floor(m.legs*0.07);
 
-  // === 鞋子 ===
-  Sh(cx2-9,HGT-6,9,4);Sh(cx2,HGT-6,9,4);
-  // === 小腿 ===
-  S(cx2-8,58,4+lg,10);S(cx2+4-lg,58,4+lg,10);
-  // 小腿肌肉轮廓
-  if(m.legs>15){M(cx2-8,60,4+lg,1);M(cx2+4-lg,60,4+lg,1)}
-  // === 大腿 ===
-  S(cx2-8,45,5+lg,14);S(cx2+3-lg,45,5+lg,14);
-  if(m.legs>30){M(cx2-8,48,5+lg,2);M(cx2+3-lg,48,5+lg,2)}
-  // === 膝关节 ===
-  Sk(cx2-8,57,5+lg,2);Sk(cx2+3-lg,57,5+lg,2);
+  // legs + shoes
+  B(mid-5,36,4,2,6);B(mid+1,36,4,2,6); // shoes
+  S(mid-5,28,3+lg,8);S(mid+2-lg,28,3+lg,8); // legs
+  if(m.legs>10)M(mid-5,30,3+lg,1);M(mid+2-lg,30,3+lg,1);
+  // shorts
+  C(mid-6,24,12,5);
+  // body
+  let bw=5+cg;S(mid-bw,11,bw*2,14);
+  C(mid-bw,11,bw*2,9);
+  // pecs
+  if(m.chest>5){M(mid,13,1,4);M(mid-2,13,1,1);M(mid+1,13,1,1)}
+  if(m.chest>15){M(mid-3,13,2,1);M(mid+1,13,2,1)}
+  // abs
+  if(m.abs>5){let n=Math.min(4,Math.floor(m.abs/15));for(let i=0;i<n;i++){M(mid-3,19+i*2,6,1);M(mid,19+i*2,1,1)}}
+  // arms
+  let at=13;S(mid-bw-3,at,2+ag,10); // left
+  let up=(screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-3:0;
+  S(mid+bw+1,at+up,2+ag,10); // right
+  if(m.upper>10){M(mid-bw-3,at+2,2+ag,2);M(mid+bw+1,at+2+up,2+ag,2)}
+  // fists
+  S(mid-bw-4,23,3+ag,3);S(mid+bw+1,23+up,3+ag,3);
+  // head
+  B(mid-4,0,8,1,1);B(mid-5,1,10,2,1);B(mid-5,3,10,5,1);B(mid-4,8,8,2,1);B(mid-3,10,6,1,1);
+  // hair
+  if(isF){Hr(mid-5,0,10,2);Hr(mid-5,2,2,6);Hr(mid+3,2,2,6)}
+  else{Hr(mid-4,0,8,2);Hr(mid-4,1,1,1);Hr(mid+3,1,1,1)}
+  // eyes
+  E(mid-3,4,2,2);E(mid+1,4,2,2);B(mid-3,4,1,1,0);B(mid+1,4,1,1,0);
+  // mouth
+  S(mid-1,7,2,1);
+  // neck
+  S(mid-2,10,4,2);
 
-  // === 短裤 ===
-  C(cx2-10,41,20,6);
-  C(cx2-10,41,2,6);C(cx2+8,41,2,6); // 裤腿开口
-
-  // === 身体 ===
-  let bw=10+cg,bh=22,bt=19;
-  S(cx2-bw,bt,bw*2,bh);
-  // 上衣
-  C(cx2-bw,bt,bw*2,14);
-  // 领口
-  C(cx2-4,bt,8,2);
-
-  // 胸肌
-  if(m.chest>5){M(cx2,bt+5,1,6);M(cx2-4,bt+3,1,1);M(cx2+3,bt+3,1,1)} // 中间线
-  if(m.chest>15){M(cx2-2,bt+4,4,1);M(cx2-2,bt+5,4,1)} // 上胸阴影
-  if(m.chest>25){Sk(cx2-bw,bt+3,4,3);Sk(cx2+bw-3,bt+3,4,3)} // 侧胸阴影
-  if(m.chest>40){M(cx2-4,bt+8,2,1);M(cx2+2,bt+8,2,1);M(cx2-5,bt+9,1,2);M(cx2+4,bt+9,1,2)} // 下胸线
-
-  // 腹肌
-  if(m.abs>5){
-    let abN=Math.min(6,1+Math.floor(m.abs/14));
-    for(let i=0;i<abN;i++){M(cx2-4,bt+14+i*2,8,1);M(cx2,bt+14+i*2,1,1)}
-  }
-  // 鲨鱼线
-  if(m.abs>35){
-    for(let i=0;i<4;i++){M(cx2-bw+i,bt+15+i,1,1);M(cx2+bw-1-i,bt+15+i,1,1)}
-  }
-
-  // === 手臂 ===
-  let at=bt+4, aw=4+ag, ah=16;
-  // 左臂
-  S(cx2-bw-aw-2,at,aw,ah);
-  // 右臂
-  let up=((screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-8:0);
-  S(cx2+bw+2,at+up,aw,ah);
-  // 三角肌
-  if(m.upper>10){M(cx2-bw-aw-2,at+2,aw,2);M(cx2+bw+2,at+2+up,aw,2)}
-  // 肱二头肌
-  if(m.upper>20){Sk(cx2-bw-aw-1,at+4,aw-1,3);Sk(cx2+bw+3,at+4+up,aw-1,3);M(cx2-bw-aw-2,at+5,aw,1);M(cx2+bw+2,at+5+up,aw,1)}
-  if(m.upper>40){M(cx2-bw-aw-1,at+3,1,7);M(cx2+bw+aw,at+3+up,1,7)}
-  // 前臂
-  S(cx2-bw-aw-1,at+ah-2,aw+1,6);
-  S(cx2+bw+2,at+ah-2+up,aw+1,6);
-  // 前臂肌群
-  if(m.upper>25){M(cx2-bw-aw-2,at+ah,aw+1,1);M(cx2+bw+2,at+ah+up,aw+1,1)}
-  // 拳头
-  S(cx2-bw-aw-3,HGT-16,aw+2,5);
-  S(cx2+bw+3,HGT-16+up,aw+2,5);
-
-  // === 斧头 ===
-  if(screen=='forest'&&chopping){
-    box(cx2+bw+aw+4,at-4+up,3,16,9); // 斧柄(棕色)
-    box(cx2+bw+aw,at-9+up,7,5,10);   // 斧刃(银色)
-  }
-
-  // === 头 ===
-  let hd=12,hy=1;
-  // 脸型(圆形像素)
-  S(cx2-6,hy+1,2,1);S(cx2+4,hy+1,2,1);
-  S(cx2-7,hy+2,2,2);S(cx2+5,hy+2,2,2);
-  S(cx2-8,hy+4,1,4);S(cx2+7,hy+4,1,4);
-  S(cx2-8,hy+8,2,2);S(cx2+6,hy+8,2,2);
-  S(cx2-7,hy+10,2,1);S(cx2+5,hy+10,2,1);
-  box(cx2-6,hy+3,12,8,1); // 面部主体
-
-  // 发型
-  if(isF){
-    H(cx2-8,hy,16,3); // 头顶
-    H(cx2-8,hy+2,3,8);H(cx2+5,hy+2,3,8); // 两侧长发
-    H(cx2-7,hy+10,3,4);H(cx2+4,hy+10,3,4); // 发尾
-    H(cx2-5,hy+12,2,2);H(cx2+3,hy+12,2,2); // 鬓角
-  }else{
-    H(cx2-7,hy,14,2);
-    H(cx2-7,hy+1,2,1);H(cx2+5,hy+1,2,1);
-    H(cx2-6,hy+2,1,1);H(cx2+5,hy+2,1,1);
-  }
-
-  // 眉毛
-  let brow=3;
-  if(m.chest>55){E(cx2-4,hy+brow,2,1);E(cx2+2,hy+brow+1,2,1)} // 凶悍(高低眉)
-  else{E(cx2-4,hy+brow,2,1);E(cx2+2,hy+brow,2,1)}
-  E(cx2-5,hy+brow,1,1);E(cx2+3,hy+brow,1,1); // 眉尾
-
-  // 眼睛(4像素宽,有层次)
-  E(cx2-5,hy+brow+2,3,3);E(cx2+2,hy+brow+2,3,3);
-  box(cx2-5,hy+brow+2,1,1,0);box(cx2+2,hy+brow+2,1,1,0); // 高光
-  box(cx2-4,hy+brow+3,2,1,0);box(cx2+3,hy+brow+3,2,1,0); // 瞳孔高光
-
-  // 鼻子
-  S(cx2-1,hy+brow+4,2,2);
-  box(cx2-1,hy+brow+5,1,1,0); // 鼻梁高光
-
-  // 嘴(越壮嘴咧越开)
-  let mw=1+Math.floor(m.chest*0.08);
-  S(cx2-mw,hy+brow+6,1,1);S(cx2+mw-1,hy+brow+6,1,1); // 嘴角
-  Sk(cx2-mw+1,hy+brow+6,mw*2-2,1); // 嘴线
-
-  // 脸颊红晕
-  if(isF){box(cx2-6,hy+brow+3,2,1,11);box(cx2+4,hy+brow+3,2,1,11)}
-
-  // 耳朵
-  S(cx2-8,hy+4,2,3);S(cx2+6,hy+4,2,3);
-
-  // 脖子
-  S(cx2-4,16,8,4);
-  // 喉结(男性)
-  if(!isF&&m.chest>20)S(cx2-1,18,2,1);
-
-  // === 渲染 ===
-  let colors=[
-    null,                         // 0=透明
-    ch.skin,                      // 1=皮肤
-    ch.hair,                      // 2=头发
-    ch.top,                       // 3=上衣
-    'rgba(0,0,0,0.3)',           // 4=肌肉线(深)
-    '#1a1a1a',                    // 5=瞳孔
-    '#444',                       // 6=鞋子
-    'rgba(0,0,0,0.15)',           // 7=皮肤阴影
-    ch.bot,                       // 8=裤子(未用)
-    '#6B3A1F',                    // 9=斧柄
-    '#B0B0B0',                    // 10=斧刃
-    'rgba(255,150,150,0.5)',      // 11=腮红
-  ];
-
-  let tw=WID*px,th=HGT*px;
-  let ox=cx-tw/2,oy=cy-th*0.45;
-
-  // 先画纯色像素
-  for(let r=0;r<HGT;r++){
-    for(let c=0;c<WID;c++){
-      let col=colors[grid[r][c]];
-      if(!col)continue;
-      ctx.fillStyle=col;
-      ctx.fillRect(ox+c*px,oy+r*px,px,px);
-    }
-  }
-
-  // 像素间隙(增强像素颗粒感)
-  if(px>=3){
-    ctx.fillStyle='rgba(0,0,0,0.08)';
-    for(let r=0;r<HGT;r++){ctx.fillRect(ox,oy+r*px-0.5,tw,0.5)}
-    for(let c=0;c<WID;c++){ctx.fillRect(ox+c*px-0.5,oy,0.5,th)}
-  }
+  // render
+  let cols=[null,ch.skin,ch.hair,ch.top,'#1a1a1a','rgba(0,0,0,0.3)','#333'];
+  let tw=GW*ps,th=GH*ps;let ox=cx-tw/2,oy=cy-th*0.45;
+  for(let r=0;r<GH;r++){for(let c=0;c<GW;c++){let v=g[r][c];if(!v||!cols[v])continue;ctx.fillStyle=cols[v];ctx.fillRect(ox+c*ps,oy+r*ps,ps,ps)}}
+  // grid lines
+  if(ps>=3){ctx.globalAlpha=0.08;ctx.strokeStyle='#000';ctx.lineWidth=0.5;
+    for(let r=0;r<=GH;r++){ctx.beginPath();ctx.moveTo(ox,oy+r*ps);ctx.lineTo(ox+tw,oy+r*ps);ctx.stroke()}
+    for(let c=0;c<=GW;c++){ctx.beginPath();ctx.moveTo(ox+c*ps,oy);ctx.lineTo(ox+c*ps,oy+th);ctx.stroke()}
+    ctx.globalAlpha=1}
 }
 
 function drawTree(t){
