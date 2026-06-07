@@ -152,39 +152,146 @@ function btn(x,y,w,h,text,color,cb){buttons.push({x,y,w,h,text,color,cb})}
 // ========== 画人（占屏幕3/4） ==========
 function drawDude(cx,cy,z){
   let s=z||1;let m=muscles;let ch=chars[characterIndex];
-  let bh=Math.min(H*0.5,W*3)*s;ctx.save();ctx.translate(cx,cy);
   let isF=ch.gender=='female';
-  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,bh*0.85,bh*0.5+m.legs*bh*0.01,bh*0.07,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#444';ctx.fillRect(-bh*0.18,bh*1.02,bh*0.4,8);ctx.fillRect(bh*0.08,bh*1.02,bh*0.4,8);
-  let cw=bh*0.13+m.legs*bh*0.008;
-  ctx.fillStyle=ch.skin;ctx.fillRect(-bh*0.12,bh*0.8,cw,bh*0.25);ctx.fillStyle=ch.skin;ctx.fillRect(bh*0.12-cw,bh*0.8,cw,bh*0.25);
-  let tw=cw*1.3,th=bh*0.4;
-  ctx.fillStyle=ch.skin;ctx.fillRect(-bh*0.15,bh*0.42,tw,th);ctx.fillStyle=ch.skin;ctx.fillRect(bh*0.15-tw,bh*0.42,tw,th);
-  ctx.fillStyle=ch.bot;ctx.fillRect(-bh*0.22,bh*0.4,bh*0.44,bh*0.15);ctx.fillRect(bh*0.05,bh*0.4,bh*0.44,bh*0.15);
-  let bw=bh*0.3+m.chest*bh*0.012;if(isF)bw=bh*0.28+m.chest*bh*0.01;
-  ctx.fillStyle=ch.skin;ctx.fillRect(-bw,bh*0.0,bw*2,bh*0.5);
-  ctx.fillStyle=ch.top;ctx.fillRect(-bw*0.85,bh*0.02,bw*1.7,bh*0.35);
-  if(m.chest>8){ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,bh*0.06);ctx.lineTo(0,bh*0.25);ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.beginPath();ctx.arc(-bw*0.22,bh*0.12,bw*0.3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(bw*0.22,bh*0.12,bw*0.3,0,Math.PI*2);ctx.fill()}
-  if(m.abs>10){ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1.2;let n=Math.min(6,Math.floor(m.abs/15));for(let i=1;i<=n;i++){ctx.beginPath();ctx.moveTo(-bw*0.5,bh*0.22+bh*0.05*i);ctx.lineTo(bw*0.5,bh*0.22+bh*0.05*i);ctx.stroke()}ctx.beginPath();ctx.moveTo(0,bh*0.22);ctx.lineTo(0,bh*0.22+bh*0.05*n);ctx.stroke()}
-  let aw=bh*0.09+m.upper*bh*0.01,ah=bh*0.38;
-  ctx.fillStyle=ch.skin;ctx.fillRect(-bw-aw-2,bh*0.04,aw,ah);
-  let au=(screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-bh*0.25:0;
-  ctx.fillStyle=ch.skin;ctx.fillRect(bw+2,bh*0.04+au,aw,ah);
-  if(m.upper>20){ctx.fillStyle='rgba(255,255,255,0.25)';ctx.beginPath();ctx.arc(bw+aw/2,bh*0.14+au,aw*0.7,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-bw-aw/2,bh*0.14,aw*0.7,0,Math.PI*2);ctx.fill()}
-  ctx.fillStyle=ch.skin;ctx.fillRect(bw+2,bh*0.38+au,aw*0.85,bh*0.18);ctx.fillRect(-bw-aw-1,bh*0.38,aw*0.85,bh*0.18);
-  ctx.fillStyle=ch.skin;ctx.beginPath();ctx.arc(-bw-aw/2,bh*0.56,aw*0.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(bw+aw/2,bh*0.56+au,aw*0.5,0,Math.PI*2);ctx.fill();
-  if(screen=='forest'&&chopping){ctx.fillStyle='#6a4a2a';ctx.fillRect(bw+aw+6,bh*0.08+au-bh*0.22,6,bh*0.5);ctx.fillStyle='#999';ctx.fillRect(bw+aw-4,bh*0.08+au-bh*0.28,24,14)}
-  let hr=bh*0.28;
-  ctx.fillStyle=ch.skin;ctx.beginPath();ctx.arc(0,-bh*0.1,hr,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=ch.hair;
-  if(isF){ctx.beginPath();ctx.arc(0,-bh*0.1,hr+3,Math.PI,0);ctx.fill();ctx.fillRect(-hr-3,-bh*0.1,hr*0.4,bh*0.3);ctx.fillRect(hr+3-hr*0.4,-bh*0.1,hr*0.4,bh*0.3)}
-  else{ctx.beginPath();ctx.arc(0,-bh*0.18,hr*1.08,Math.PI,Math.PI*2);ctx.fill()}
-  let fs=Math.floor(hr*0.8);
-  ctx.fillStyle='#000';ctx.font=fs+'px monospace';ctx.textAlign='center';ctx.fillText(ch.eyes,0,-bh*0.06);
-  ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,-bh*0.01,hr*0.15+Math.min(12,m.chest*0.1)*0.1,0.1,Math.PI-0.1);ctx.stroke();
-  ctx.fillStyle=ch.skin;ctx.fillRect(-bh*0.06,-bh*0.01,bh*0.12,bh*0.1);
-  ctx.restore();
+  let px=(screen==='home')?5:3; // 像素大小(首页更大)
+  let WID=24, HGT=40; // 网格
+  let grid=Array(HGT).fill().map(()=>Array(WID).fill(0)); // 0=透明
+
+  // 辅助函数：填矩形
+  function box(x,y,w,h,val){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<HGT&&c>=0&&c<WID)grid[r][c]=val}
+  function skin(x,y,w,h){box(x,y,w,h,1)}
+  function hair(x,y,w,h){box(x,y,w,h,2)}
+  function cloth(x,y,w,h){box(x,y,w,h,3)}
+  function muscle(x,y,w,h){box(x,y,w,h,4)} // 肌肉线条(深色)
+  function eye(x,y,w,h){box(x,y,w,h,5)}
+  function shoe(x,y,w,h){box(x,y,w,h,6)}
+
+  let cx2=Math.floor(WID/2);
+  // 缩放因子：肌肉越壮，部分区域越宽
+  let armGain=Math.floor(m.upper*0.12);
+  let chestGain=Math.floor(m.chest*0.1);
+  let legGain=Math.floor(m.legs*0.08);
+  let absGain=Math.floor(m.abs*0.08);
+
+  // === 腿 ===
+  let legTop=28,legH=10;
+  shoe(cx2-5,HGT-3,4,2); shoe(cx2+1,HGT-3,4,2);
+  skin(cx2-4,legTop,3+legGain,legH); skin(cx2+1,legTop,3+legGain,legH);
+  // 膝盖线
+  if(m.legs>15)muscle(cx2-4,legTop+3,3+legGain,1);muscle(cx2+1,legTop+3,3+legGain,1);
+
+  // === 短裤 ===
+  cloth(cx2-5,25,10,4);
+
+  // === 身体 ===
+  let bodyW=6+chestGain,bodyH=12,bodyTop=13;
+  skin(cx2-bodyW,bodyTop,bodyW*2,bodyH);
+  // 上衣
+  cloth(cx2-bodyW,bodyTop,bodyW*2,Math.floor(bodyH*0.7));
+
+  // 胸肌线
+  if(m.chest>5){muscle(cx2,bodyTop+2,1,3);muscle(cx2-2,bodyTop+1,1,1);muscle(cx2+1,bodyTop+1,1,1)}
+  if(m.chest>20){muscle(cx2-3,bodyTop+1,2,2);muscle(cx2+1,bodyTop+1,2,2)}
+
+  // 腹肌
+  if(m.abs>5){
+    let abRows=Math.floor(m.abs/12)+1;
+    for(let i=0;i<Math.min(abRows,6);i++){muscle(cx2-2,bodyTop+5+i*1,4+absGain,1);muscle(cx2,bodyTop+5+i*1,1,1)}
+  }
+
+  // 鲨鱼线
+  if(m.abs>40){
+    for(let r=0;r<4;r++){muscle(cx2-bodyW+r,bodyTop+6+r,1,1);muscle(cx2+bodyW-1-r,bodyTop+6+r,1,1)}
+  }
+
+  // === 手臂 ===
+  let armTop=bodyTop+2;
+  let armW=2+armGain,armH=10;
+  skin(cx2-bodyW-armW-1,armTop,armW,armH); // 左
+  // 挥斧动画
+  let up=((screen=='forest'&&chopping&&chopCD>CHOP_INT*0.6)?-4:0);
+  skin(cx2+bodyW+1,armTop+up,armW,armH);
+  // 肱二头肌
+  if(m.upper>10){muscle(cx2-bodyW-armW-1,armTop+2,armW,2);muscle(cx2+bodyW+1,armTop+2+up,armW,2)}
+  if(m.upper>30){muscle(cx2-bodyW-armW,armTop+1,1,4);muscle(cx2+bodyW+armW,armTop+1+up,1,4)}
+  // 前臂
+  skin(cx2-bodyW-armW,armTop+armH-1,armW+1,3);
+  skin(cx2+bodyW+1,armTop+armH-1+up,armW+1,3);
+  // 拳头
+  skin(cx2-bodyW-armW-1,HGT-8,armW+1,2);
+  skin(cx2+bodyW+1,HGT-8+up,armW+1,2);
+
+  // === 斧头(砍树时) ===
+  if(screen=='forest'&&chopping){
+    box(cx2+bodyW+armW+2,armTop-2+up,2,8,7); // 斧柄
+    box(cx2+bodyW+armW,armTop-5+up,4,3,8); // 斧刃
+  }
+
+  // === 头 ===
+  let headR=5,headY=3;
+  skin(cx2-3,headY,1,1);skin(cx2+2,headY,1,1);
+  skin(cx2-4,headY+1,1,2);skin(cx2+3,headY+1,1,2);
+  skin(cx2-5,headY+3,1,3);skin(cx2+4,headY+3,1,3);
+  box(cx2-3,headY+1,6,7,1); // 脸部主体
+
+  // 头发
+  if(isF){
+    // 长发
+    hair(cx2-5,headY,10,2);
+    hair(cx2-5,headY+1,2,5);hair(cx2+3,headY+1,2,5);
+    hair(cx2-4,headY+7,2,3);hair(cx2+2,headY+7,2,3);
+  }else{
+    hair(cx2-4,headY,8,2);
+    hair(cx2-4,headY+1,1,1);hair(cx2+3,headY+1,1,1);
+  }
+
+  // 五官（像素表情）
+  // 眉毛
+  if(m.chest>50){box(cx2-2,headY+3,2,1,5);box(cx2+1,headY+3,2,1,5)}else{box(cx2-2,headY+3,2,1,5);box(cx2+1,headY+3,2,1,5)}
+
+  // 眼睛
+  eye(cx2-3,headY+4,2,2);eye(cx2+1,headY+4,2,2);
+  // 高光
+  box(cx2-3,headY+4,1,1,0);box(cx2+1,headY+4,1,1,0);
+
+  // 嘴（肌肉越壮嘴咧越宽）
+  let mouthW=1+Math.floor(m.chest*0.06);
+  skin(cx2-mouthW,headY+6,mouthW*2+1,1);
+  skin(cx2-mouthW+1,headY+5,Math.max(1,mouthW*2-1),1);
+
+  // 脖子
+  skin(cx2-2,11,4,2);
+
+  // === 渲染网格 ===
+  let colors=[
+    null,              // 0=透明
+    ch.skin,           // 1=皮肤
+    ch.hair,           // 2=头发
+    isF?(ch.top):ch.top,// 3=衣服
+    'rgba(0,0,0,0.35)',// 4=肌肉线条
+    '#111',            // 5=眼睛
+    '#333',            // 6=鞋子
+    '#8B4513',         // 7=斧柄
+    '#C0C0C0',         // 8=斧刃
+  ];
+
+  let totalW=WID*px,totalH=HGT*px;
+  let ox=cx-totalW/2,oy=cy-totalH*0.45;
+
+  for(let r=0;r<HGT;r++){
+    for(let c=0;c<WID;c++){
+      let col=colors[grid[r][c]];
+      if(!col)continue;
+      ctx.fillStyle=col;
+      ctx.fillRect(ox+c*px,oy+r*px,px,px);
+    }
+  }
+
+  // 像素网格线(淡色，增强像素感)
+  ctx.globalAlpha=0.12;ctx.strokeStyle='#000';ctx.lineWidth=0.5;
+  for(let r=0;r<=HGT;r++){ctx.beginPath();ctx.moveTo(ox,oy+r*px);ctx.lineTo(ox+totalW,oy+r*px);ctx.stroke()}
+  for(let c=0;c<=WID;c++){ctx.beginPath();ctx.moveTo(ox+c*px,oy);ctx.lineTo(ox+c*px,oy+totalH);ctx.stroke()}
+  ctx.globalAlpha=1;
 }
 
 function drawTree(t){
