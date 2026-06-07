@@ -145,9 +145,14 @@ function update(){
 
   // 农民AI
   for(let f of farmers){
-    if(!f.target||(f.target.gold<=0&&resources.includes(f.target))){
+    if(!f.target||f.target.gold<=0){
       let av=resources.filter(r=>r.gold>0);
-      f.target=av.length?av[Math.floor(Math.random()*av.length)]:null;
+      if(av.length){
+        // 找最近的
+        let best=av[0],bestD=Math.hypot(f.x-av[0].x,f.y-av[0].y);
+        for(let i=1;i<av.length;i++){let d=Math.hypot(f.x-av[i].x,f.y-av[i].y);if(d<bestD){bestD=d;best=av[i]}}
+        f.target=best;
+      }else f.target=null;
     }
     if(f.target&&f.target.gold>0){
       let dx=f.target.x-f.x,dy=f.target.y-f.y,d=Math.hypot(dx,dy);
