@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>帝国纷争 - 策略造兵</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a0f;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;position:fixed;width:100%;height:100%;font-family:monospace}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+// ========== 全局状态 ==========
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+let W,H,frame=0;
+let gold=50, level=1, stars=0;
+let baseHP=500,maxBaseHP=500,enemyHP=500,enemyMaxHP=500;
+let gameOver=false,victory=false,selectedCard=null;
+let base,enemyBase,enemyGold=30,aiBuildTimer=0;
+let particles=[],cardSlots=[],units=[],farmers=[],barracks=[],resources=[],obstacles=[];
+let shopData,myCards=[];
+
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;W=canvas.width;H=canvas.height}
+resize();window.addEventListener('resize',resize);
+
+// ========== 兵种定义 ==========
+const BT={
+  infantry:{name:'步兵营',cost:20,hp:220,unitHP:60,unitAtk:10,unitSpd:1.2,unitRate:240,color:'#4499ee',uColor:'#66bbff',size:28,range:0,desc:'近战'},
+  archer:{name:'弓箭营',cost:30,hp:150,unitHP:35,unitAtk:15,unitSpd:0.7,unitRate:270,color:'#44cc44',uColor:'#88ff88',size:26,range:130,desc:'远程'},
+  knight:{name:'骑士营',cost:50,hp:300,unitHP:150,unitAtk:28,unitSpd:2.0,unitRate:340,color:'#ee9944',uColor:'#ffcc66',size:34,range:0,desc:'重装'},
+};
+
+// ========== 存档 ==========
+function loadShop(){
+  let d=localStorage.getItem('empire_v3');
+  shopData=d?JSON.parse(d):{stars:0,unlocked:['infantry','archer'],levels:{infantry:1,archer:1,knight:1},xp:{}};
+}
+function saveShop(){localStorage.setItem('empire_v3',JSON.stringify(shopData))}
+loadShop();stars=shopData.stars;
+
+function glv(t){return shopData.levels[t]||1}
+function cost(t){return Math.floor(BT[t].cost*(1+(glv(t)-1)*0.12))}
+function uHP(t){return BT[t].unitHP+glv(t)*8}
+function uAtk(t){return BT[t].unitAtk+glv(t)*3}
+
+// ========== 初始化 ==========
+function initGame(){
+  gold=50+level*10;
+  baseHP=maxBaseHP=500+level*30;
+  enemyHP=enemyMaxHP=400+level*40;
+  gameOver=false;victory=false;frame=0;selectedCard=null;
+  units=[];farmers=[];barracks=[];particles=[];resources=[];obstacles=[];
+  base={x:75,y:H*0.45,r:25,produceTimer:0,produceRate:190};
+  enemyBase={x:W-75,y:H*0.45,r:25,produceTimer:0,produceRate:210-level*2};
+  enemyGold=25+level*12;aiBuildTimer=0;
+
+  // 金矿 (4-6个, 大而明显)
+  let n=4+Math.floor(level/2);
+  for(let i=0;i<n;i++){
+    let rx=100+Math.random()*(W-200);
+    let ry=50+Math.random()*(H-210);
+    resources.push({x:rx,y:ry,gold:120+level*30,r:22});
+  }
+
+  // 障碍物
+  let oc=2+Math.floor(level/1.5);
+  for(let i=0;i<oc;i++){
+    let s=25+Math.random()*35;
+    let ox=160+Math.random()*(W-320);
+    let oy=60+Math.random()*(H-200);
+    if(Math.hypot(ox-base.x,oy-base.y)<90||Math.hypot(ox-enemyBase.x,oy-enemyBase.y)<90)continue;
+    obstacles.push({x:ox,y:oy,r:s,type:['tree','rock','pond'][Math.floor(Math.random()*3)]});
+  }
+
+  // 卡牌
+  myCards=['infantry','archer'];
+  if(level>=3)myCards.push('knight');
+  cardSlots=[];
+  let tw=myCards.length*70+(myCards.length-1)*8;
+  let sx=(W-tw)/2, cy=H-108;
+  myCards.forEach((t,i)=>{cardSlots.push({x:sx+i*78,y:cy,w:70,h:90,type:t})});
+
+  // AI初始
+  let aiN=Math.min(1+Math.floor(level/3),3);
+  let aiTypes=['infantry'];if(level>=2)aiTypes.push('archer');if(level>=4)aiTypes.push('knight');
+  for(let i=0;i<aiN;i++){
+    let t=aiTypes[Math.floor(Math.random()*aiTypes.length)];
+    let bx=enemyBase.x-65-Math.random()*55;
+    let by=enemyBase.y+(Math.random()-0.5)*90;
+    by=Math.max(70,Math.min(H-170,by));
+    barracks.push({type:t,x:bx,y:by,owner:'enemy',HP:BT[t].hp,maxHP:BT[t].hp,
+      size:BT[t].size,color:BT[t].color,produceTimer:0,produceRate:BT[t].unitRate+40,
+      uHP:uHP(t),uAtk:uAtk(t),uSpd:BT[t].unitSpd,uColor:BT[t].uColor,range:BT[t].range||0,lvl:glv(t)});
+  }
+}
+
+// ========== 农民 ==========
+function spawnFarmer(side){
+  let b=side==='player'?base:enemyBase;
+  farmers.push({x:b.x+(Math.random()-0.5)*12,y:b.y+(Math.random()-0.5)*12,target:null,carry:false,side,spd:1});
+}
+
+// ========== 放兵营 ==========
+function placeBarracks(t,x,y,owner){
+  let bt=BT[t];let lv=glv(t);
+  for(let o of obstacles){if(Math.hypot(x-o.x,y-o.y)<o.r+bt.size/2)return false}
+  let home=owner==='player'?base:enemyBase;
+  if(Math.hypot(x-home.x,y-home.y)<home.r+bt.size/2)return false;
+  if(x<bt.size/2||x>W-bt.size/2||y<35||y>H-165)return false;
+  barracks.push({type:t,x,y,owner,HP:bt.hp,maxHP:bt.hp,size:bt.size,color:bt.color,
+    produceTimer:0,produceRate:bt.unitRate,uHP:uHP(t),uAtk:uAtk(t),
+    uSpd:bt.unitSpd,uColor:bt.uColor,range:bt.range||0,lvl:lv,xp:shopData.xp[t]||0});
+  return true;
+}
+
+// ========== 造兵 ==========
+function spawnUnit(b){
+  units.push({x:b.x+(Math.random()-0.5)*6,y:b.y+(Math.random()-0.5)*6,
+    HP:b.uHP,maxHP:b.uHP,atk:b.uAtk,spd:b.uSpd,color:b.uColor,owner:b.owner,
+    r:5,range:b.range,atkCD:0,tx:0,ty:0,target:null});
+}
+
+// ========== 碰撞障碍物 ==========
+function blocked(nx,ny,r){
+  for(let o of obstacles){if(Math.hypot(nx-o.x,ny-o.y)<o.r+r)return true}
+  return false;
+}
+
+// ========== 主循环 ==========
+function update(){
+  if(gameOver||victory)return;frame++;
+
+  // 造农民
+  base.produceTimer++;enemyBase.produceTimer++;
+  if(base.produceTimer>=base.produceRate&&farmers.filter(f=>f.side==='player').length<5+level){base.produceTimer=0;spawnFarmer('player')}
+  if(enemyBase.produceTimer>=enemyBase.produceRate&&farmers.filter(f=>f.side==='enemy').length<3+Math.floor(level/2)){enemyBase.produceTimer=0;spawnFarmer('enemy')}
+
+  // 农民AI
+  for(let f of farmers){
+    if(!f.target||(f.target.gold<=0&&resources.includes(f.target))){
+      let av=resources.filter(r=>r.gold>0);
+      f.target=av.length?av[Math.floor(Math.random()*av.length)]:null;
+    }
+    if(f.target&&f.target.gold>0){
+      let dx=f.target.x-f.x,dy=f.target.y-f.y,d=Math.hypot(dx,dy);
+      if(d>f.target.r+2){f.x+=dx/d*f.spd;f.y+=dy/d*f.spd}else{f.carry=true;f.target.gold-=3;if(f.target.gold<=0)f.target=null}
+    }
+    if(f.carry){
+      let h=f.side==='player'?base:enemyBase;
+      let dx=h.x-f.x,dy=h.y-f.y,d=Math.hypot(dx,dy);
+      if(d>h.r){f.x+=dx/d*f.spd*1.5;f.y+=dy/d*f.spd*1.5}
+      else{if(f.side==='player')gold+=8;else enemyGold+=6;f.carry=false}
+    }
+  }
+  farmers=farmers.filter(f=>f.side==='player'||Math.random()>0.002);
+
+  // 兵营造兵
+  for(let b of barracks){
+    if(b.HP<=0)continue;b.produceTimer++;
+    if(b.produceTimer>=b.produceRate){b.produceTimer=0;spawnUnit(b);
+      b.xp=(b.xp||0)+1;shopData.xp[b.type]=Math.max(shopData.xp[b.type]||0,b.xp)}
+  }
+  barracks=barracks.filter(b=>b.HP>0);
+  if(frame%60===0)saveShop();
+
+  // 单位AI
+  for(let u of units){
+    if(u.HP<=0||u.atkCD>0){u.atkCD=Math.max(0,u.atkCD-1);continue}
+    let enemies=u.owner==='player'?
+      [...units.filter(v=>v.owner==='enemy'&&v.HP>0),...barracks.filter(b=>b.owner==='enemy'&&b.HP>0)]:
+      [...units.filter(v=>v.owner==='player'&&v.HP>0),...barracks.filter(b=>b.owner==='player'&&b.HP>0)];
+    let home=u.owner==='player'?enemyBase:base;
+
+    // 找最近敌人
+    let best=null,bestD=99999;
+    for(let e of enemies){let d=Math.hypot(u.x-e.x,u.y-e.y);if(d<bestD){bestD=d;best=e}}
+    let homeD=Math.hypot(u.x-home.x,u.y-home.y);
+
+    if(best&&bestD<homeD+40){u.tx=best.x;u.ty=best.y;u.target=best}
+    else{u.tx=home.x;u.ty=home.y;u.target=null}
+
+    let dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
+    let rng=u.range||14;
+
+    // 移动
+    if(d>rng){let nx=u.x+dx/d*u.spd,ny=u.y+dy/d*u.spd;if(!blocked(nx,u.r)){u.x=nx;u.y=ny}}
+
+    // 攻击
+    if(d<=rng+8){
+      if(u.target&&u.target.HP>0){u.target.HP-=u.atk;u.atkCD=u.range?50:35}
+      else if(d<=home.r+10){if(u.owner==='player')enemyHP-=u.atk;else baseHP-=u.atk;u.atkCD=35}
+    }
+  }
+  units=units.filter(u=>u.HP>0);
+
+  // AI建兵营
+  aiBuildTimer++;let aiRate=Math.max(90,190-level*12);
+  if(aiBuildTimer>=aiRate&&barracks.filter(b=>b.owner==='enemy').length<2+Math.floor(level/3)){
+    aiBuildTimer=0;
+    let types=['infantry'];if(level>=2)types.push('archer');if(level>=4)types.push('knight');
+    let t=types[Math.floor(Math.random()*types.length)];
+    if(enemyGold>=BT[t].cost){
+      enemyGold-=BT[t].cost;
+      let bx=enemyBase.x-65-Math.random()*60,by=enemyBase.y+(Math.random()-0.5)*100;
+      placeBarracks(t,Math.max(60,bx),Math.max(50,Math.min(H-170,by)),'enemy');
+    }
+  }
+
+  if(enemyHP<=0){victory=true;let rw=1+Math.floor((level-1)/3);stars+=rw;shopData.stars=stars;saveShop()}
+  if(baseHP<=0){gameOver=true}
+}
+
+// ========== 渲染 ==========
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // 草地
+  ctx.fillStyle=['#3a6b1e','#2d5a15','#3e5e20'][level%3];ctx.fillRect(0,0,W,H-125);
+  for(let i=0;i<30;i++)for(let j=0;j<18;j++){if((i*j+level)%6===0){ctx.fillStyle='rgba(255,255,255,0.02)';ctx.fillRect(i*35,j*35,2,2)}}
+
+  // 中线
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.setLineDash([8,16]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(W/2,10);ctx.lineTo(W/2,H-130);ctx.stroke();ctx.setLineDash([]);
+
+  // 障碍物
+  ctx.globalAlpha=0.55;
+  for(let o of obstacles){
+    if(o.type==='tree'){ctx.fillStyle='#1a5c0a';ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#2d8020';ctx.beginPath();ctx.arc(o.x,o.y,o.r*0.7,0,Math.PI*2);ctx.fill()}
+    if(o.type==='rock'){ctx.fillStyle='#666';ctx.fillRect(o.x-o.r,o.y-o.r*0.6,o.r*2,o.r*1.2);ctx.fillStyle='#888';ctx.fillRect(o.x-o.r*0.6,o.y-o.r*0.3,o.r*1.2,o.r*0.6)}
+    if(o.type==='pond'){ctx.fillStyle='#3355aa';ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#4477cc';ctx.beginPath();ctx.arc(o.x,o.y,o.r*0.6,0,Math.PI*2);ctx.fill()}
+  }
+  ctx.globalAlpha=1;
+
+  // 金矿 (发光)
+  for(let r of resources){if(r.gold<=0)continue;
+    ctx.fillStyle='rgba(255,215,0,0.15)';ctx.beginPath();ctx.arc(r.x,r.y,r.r+10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c8941a';ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(r.x,r.y,r.r*0.45,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText('💰'+Math.floor(r.gold),r.x,r.y+3);
+  }
+
+  // 兵营
+  for(let b of barracks){
+    ctx.fillStyle=b.color;ctx.globalAlpha=0.85;ctx.fillRect(b.x-b.size/2,b.y-b.size/2,b.size,b.size);ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1;ctx.strokeRect(b.x-b.size/2,b.y-b.size/2,b.size,b.size);
+    ctx.fillStyle='#200';ctx.fillRect(b.x-b.size/2,b.y-b.size/2-7,b.size,4);
+    ctx.fillStyle=b.HP/b.maxHP>0.5?'#0f0':(b.HP/b.maxHP>0.25?'#ff0':'#f00');
+    ctx.fillRect(b.x-b.size/2,b.y-b.size/2-7,b.size*(b.HP/b.maxHP),4);
+    let pg=b.produceTimer/b.produceRate;if(pg>0.02){ctx.fillStyle='#ff0';ctx.fillRect(b.x-b.size/2,b.y+b.size/2+1,b.size*pg,2)}
+    ctx.fillStyle='#fff';ctx.font='7px monospace';ctx.textAlign='center';ctx.fillText('Lv'+b.lvl,b.x,b.y+b.size/2-4);
+  }
+
+  // 单位
+  for(let u of units){
+    ctx.fillStyle=u.color;ctx.beginPath();ctx.arc(u.x,u.y,u.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='6px monospace';ctx.textAlign='center';ctx.fillText(Math.ceil(u.HP),u.x,u.y+1);
+    // 远程范围标识
+    if(u.range>0&&u.atkCD>45){ctx.strokeStyle='rgba(0,255,0,0.3)';ctx.setLineDash([2,4]);ctx.beginPath();ctx.arc(u.x,u.y,u.range,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
+  }
+
+  // 农民
+  for(let f of farmers){
+    ctx.fillStyle=f.side==='player'?'#bb99cc':'#cc7788';ctx.beginPath();ctx.arc(f.x,f.y,7,0,Math.PI*2);ctx.fill();
+    if(f.carry){ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(f.x,f.y-6,3,0,Math.PI*2);ctx.fill()}
+  }
+
+  // 基地
+  for(let [bx,by,bHP,bMax,pl] of [[base.x,base.y,baseHP,maxBaseHP,true],[enemyBase.x,enemyBase.y,enemyHP,enemyMaxHP,false]]){
+    ctx.fillStyle=pl?'#3377bb':'#bb3333';ctx.beginPath();ctx.arc(bx,by,25,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='18px monospace';ctx.textAlign='center';ctx.fillText(pl?'🏰':'🏚️',bx,by+6);
+    ctx.fillStyle='#300';ctx.fillRect(bx-25,by-32,50,5);
+    ctx.fillStyle=bHP/bMax>0.5?'#0f0':(bHP/bMax>0.25?'#ff0':'#f00');
+    ctx.fillRect(bx-25,by-32,50*(bHP/bMax),5);
+  }
+
+  // 粒子
+  for(let p of particles){ctx.globalAlpha=Math.min(1,p.life/15);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+
+  // 选中高亮
+  if(selectedCard){ctx.strokeStyle='#ff0';ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.strokeRect(5,5,W-10,H-135);ctx.setLineDash([])}
+
+  // 底部UI
+  let uiY=H-125;
+  ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,uiY,W,125);
+  for(let c of cardSlots){
+    let bt=BT[c.type];let ct=cost(c.type);let sel=selectedCard===c.type;
+    ctx.fillStyle=sel?'rgba(70,70,70,0.95)':'rgba(35,35,35,0.9)';ctx.fillRect(c.x,c.y,c.w,c.h);
+    ctx.strokeStyle=gold>=ct?(sel?'#ff0':'#0f0'):'#500';ctx.lineWidth=2;ctx.strokeRect(c.x,c.y,c.w,c.h);
+    ctx.fillStyle=bt.color;ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(bt.name,c.x+c.w/2,c.y+20);
+    ctx.fillStyle='#ffd700';ctx.font='11px monospace';ctx.fillText('💰'+ct,c.x+c.w/2,c.y+56);
+    ctx.fillStyle='#999';ctx.font='9px monospace';ctx.fillText('Lv'+glv(c.type),c.x+c.w/2,c.y+78);
+  }
+
+  // HUD
+  ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,30);
+  ctx.fillStyle='#ffd700';ctx.font='bold 15px monospace';ctx.textAlign='left';ctx.fillText('🪙'+Math.floor(gold),8,22);
+  ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText('第'+level+'关',W/2,22);
+  ctx.fillStyle='#afa';ctx.textAlign='right';ctx.fillText('⭐'+stars,W-8,22);
+
+  // 操作提示
+  if(!gameOver&&!victory){ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText('👇点卡牌 → 选兵营 → 点地图放置',W/2,H-130)}
+
+  // 结束界面
+  if(victory){
+    ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#ff0';ctx.font='bold 36px monospace';ctx.textAlign='center';ctx.fillText('胜利!',W/2,H*0.37);
+    ctx.fillStyle='#fff';ctx.font='16px monospace';ctx.fillText('⭐+'+Math.max(1,1+Math.floor((level-1)/3)),W/2,H*0.48);
+    let a=0.5+Math.sin(frame*0.05)*0.5;ctx.globalAlpha=a;ctx.fillText('点击→下一关',W/2,H*0.6);ctx.globalAlpha=1;
+  }
+  if(gameOver){
+    ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#f44';ctx.font='bold 36px monospace';ctx.textAlign='center';ctx.fillText('基地沦陷',W/2,H*0.42);
+    let a=0.5+Math.sin(frame*0.05)*0.5;ctx.globalAlpha=a;ctx.fillText('点击重来',W/2,H*0.55);ctx.globalAlpha=1;
+  }
+}
+
+// ========== 输入 ==========
+canvas.addEventListener('mousedown',e=>{handleInput(e.offsetX,e.offsetY)});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();let t=e.touches[0];handleInput(t.clientX,t.clientY)},{passive:false});
+
+function handleInput(mx,my){
+  if(gameOver){level=1;initGame();return}
+  if(victory){level++;initGame();return}
+  // 点击卡牌
+  for(let c of cardSlots){
+    if(mx>c.x&&mx<c.x+c.w&&my>c.y&&my<c.y+c.h){
+      selectedCard=selectedCard===c.type?null:c.type;return;
+    }
+  }
+  // 放置兵营
+  if(selectedCard&&my<H-128){
+    let ct=cost(selectedCard);
+    if(gold>=ct){
+      let ok=placeBarracks(selectedCard,mx,my,'player');
+      if(ok){gold-=ct;selectedCard=null;
+        for(let i=0;i<6;i++)particles.push({x:mx,y:my,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,life:12,color:'#ff0',r:2})}
+      }
+    }
+  }else if(my<H-128){selectedCard=null}
+}
+
+function loop(){update();draw();requestAnimationFrame(loop)}
+initGame();loop();
+</script>
+</body>
+</html>
