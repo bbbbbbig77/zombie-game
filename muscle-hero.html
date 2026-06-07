@@ -21,14 +21,19 @@ resize();window.addEventListener('resize',resize);
 
 // ========== 音效系统 ==========
 let sfxOn=true;
+function ensureAudio(){
+  if(!bgmCtx)try{bgmCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return false}
+  if(bgmCtx.state==='suspended')bgmCtx.resume();
+  return bgmCtx.state==='running';
+}
 function sfx(freq,type,dur,vol=0.08,detune=0){
   if(!sfxOn)return;
   try{
-    let a=bgmCtx||new(window.AudioContext||window.webkitAudioContext)();
-    let o=a.createOscillator(),g=a.createGain();
+    if(!ensureAudio())return;
+    let o=bgmCtx.createOscillator(),g=bgmCtx.createGain();
     o.type=type;o.frequency.value=freq;if(detune)o.detune.value=detune;
-    g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
-    o.connect(g);g.connect(a.destination);o.start(a.currentTime);o.stop(a.currentTime+dur);
+    g.gain.setValueAtTime(vol,bgmCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,bgmCtx.currentTime+dur);
+    o.connect(g);g.connect(bgmCtx.destination);o.start(bgmCtx.currentTime);o.stop(bgmCtx.currentTime+dur);
   }catch(e){}
 }
 function sfxChop(){ // 斧头砍树
