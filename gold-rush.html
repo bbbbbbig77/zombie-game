@@ -29,9 +29,9 @@ resize();window.addEventListener('resize',resize);
 
 // ========== 兵种定义 ==========
 const BT={
-  infantry:{name:'步兵营',cost:20,hp:220,unitHP:60,unitAtk:10,unitSpd:1.2,unitRate:500,color:'#4499ee',uColor:'#66bbff',size:28,range:0,desc:'近战'},
-  archer:{name:'弓箭营',cost:30,hp:150,unitHP:35,unitAtk:15,unitSpd:0.7,unitRate:550,color:'#44cc44',uColor:'#88ff88',size:26,range:130,desc:'远程'},
-  knight:{name:'骑士营',cost:50,hp:300,unitHP:150,unitAtk:28,unitSpd:2.0,unitRate:700,color:'#ee9944',uColor:'#ffcc66',size:34,range:0,desc:'重装'},
+  infantry:{name:'步兵营',cost:20,hp:220,unitHP:60,unitAtk:10,unitSpd:0.8,unitRate:500,color:'#4499ee',uColor:'#66bbff',size:28,range:0,desc:'近战'},
+  archer:{name:'弓箭营',cost:30,hp:150,unitHP:35,unitAtk:15,unitSpd:0.5,unitRate:550,color:'#44cc44',uColor:'#88ff88',size:26,range:130,desc:'远程'},
+  knight:{name:'骑士营',cost:50,hp:300,unitHP:150,unitAtk:28,unitSpd:1.3,unitRate:700,color:'#ee9944',uColor:'#ffcc66',size:34,range:0,desc:'重装'},
 };
 
 // ========== 存档 ==========
@@ -101,7 +101,7 @@ function initGame(){
 // ========== 农民 ==========
 function spawnFarmer(side){
   let b=side==='player'?base:enemyBase;
-  farmers.push({x:b.x+(Math.random()-0.5)*12,y:b.y+(Math.random()-0.5)*12,target:null,carry:false,side,spd:1});
+  farmers.push({x:b.x+(Math.random()-0.5)*12,y:b.y+(Math.random()-0.5)*12,target:null,carry:false,side,spd:0.6,HP:30,maxHP:30});
 }
 
 // ========== 放兵营 ==========
@@ -147,16 +147,16 @@ function update(){
     }
     if(f.target&&f.target.gold>0){
       let dx=f.target.x-f.x,dy=f.target.y-f.y,d=Math.hypot(dx,dy);
-      if(d>f.target.r+2){f.x+=dx/d*f.spd;f.y+=dy/d*f.spd}else{f.carry=true;f.target.gold-=3;if(f.target.gold<=0)f.target=null}
+      if(d>f.target.r+2){let fs=f.spd||0.6;f.x+=dx/d*fs;f.y+=dy/d*fs}else{f.carry=true;f.target.gold-=3;if(f.target.gold<=0)f.target=null}
     }
     if(f.carry){
       let h=f.side==='player'?base:enemyBase;
       let dx=h.x-f.x,dy=h.y-f.y,d=Math.hypot(dx,dy);
-      if(d>h.r){f.x+=dx/d*f.spd*1.5;f.y+=dy/d*f.spd*1.5}
+      if(d>h.r){let fs=(f.spd||0.6)*1.5;f.x+=dx/d*fs;f.y+=dy/d*fs}
       else{if(f.side==='player')gold+=8;else enemyGold+=6;f.carry=false}
     }
   }
-  farmers=farmers.filter(f=>f.side==='player'||Math.random()>0.002);
+  farmers=farmers.filter(f=>f.HP>0&&(f.side==='player'||Math.random()>0.003));
 
   // 兵营造兵
   for(let b of barracks){
@@ -170,18 +170,15 @@ function update(){
   // 单位AI
   for(let u of units){
     if(u.HP<=0||u.atkCD>0){u.atkCD=Math.max(0,u.atkCD-1);continue}
-    let rawEnemies=u.owner==='player'?
-      [...units.filter(v=>v.owner==='enemy'&&v.HP>0),...barracks.filter(b=>b.owner==='enemy'&&b.HP>0),...farmers.filter(f=>f.side==='enemy')]:
-      [...units.filter(v=>v.owner==='player'&&v.HP>0),...barracks.filter(b=>b.owner==='player'&&b.HP>0),...farmers.filter(f=>f.side==='player')];
-    let enemies=rawEnemies.filter(e=>e.HP===undefined||e.HP>0); // 农民无HP，直接可攻击
+    let enemies=u.owner==='player'?
+      [...units.filter(v=>v.owner==='enemy'&&v.HP>0),...barracks.filter(b=>b.owner==='enemy'&&b.HP>0),...farmers.filter(f=>f.side==='enemy'&&f.HP>0)]:
+      [...units.filter(v=>v.owner==='player'&&v.HP>0),...barracks.filter(b=>b.owner==='player'&&b.HP>0),...farmers.filter(f=>f.side==='player'&&f.HP>0)];
     let home=u.owner==='player'?enemyBase:base;
     let homeDist=Math.hypot(u.x-home.x,u.y-home.y);
 
-    // 找最近敌人
-    let best=null,bestD=99999;
+    // 找最近敌人（含基地）
+    let best=null,bestD=homeDist; // 默认目标是基地
     for(let e of enemies){let d=Math.hypot(u.x-e.x,u.y-e.y);if(d<bestD){bestD=d;best=e}}
-    // 如果基地比敌人更近，直接攻击基地
-    if(homeDist<bestD){best=null;bestD=homeDist}
 
     if(best){u.tx=best.x;u.ty=best.y;u.target=best}
     else{u.tx=home.x;u.ty=home.y;u.target=null}
@@ -189,16 +186,13 @@ function update(){
     let dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
     let rng=u.range||14;
 
-    // 移动
+    // 移动到攻击距离内
     if(d>rng){let nx=u.x+dx/d*u.spd,ny=u.y+dy/d*u.spd;if(!blocked(nx,u.r)){u.x=nx;u.y=ny}}
 
     // 攻击
-    if(d<=Math.max(rng+8,20)){
-      if(u.target&&(u.target.HP===undefined||u.target.HP>0)){
-        if(u.target.HP!==undefined)u.target.HP-=u.atk; // 兵营/单位
-        u.atkCD=u.range?50:35;
-      }
-      else if(d<=home.r+16){if(u.owner==='player')enemyHP-=u.atk;else baseHP-=u.atk;u.atkCD=35}
+    if(d<=rng+10){
+      if(u.target&&u.target.HP>0){u.target.HP-=u.atk;u.atkCD=u.range?50:35}
+      else if(!u.target&&d<=home.r+rng+10){if(u.owner==='player')enemyHP-=u.atk;else baseHP-=u.atk;u.atkCD=35}
     }
   }
   units=units.filter(u=>u.HP>0);
@@ -268,9 +262,11 @@ function draw(){
   }
 
   // 农民
-  for(let f of farmers){
+  for(let f of farmers){if(f.HP<=0)continue;
     ctx.fillStyle=f.side==='player'?'#bb99cc':'#cc7788';ctx.beginPath();ctx.arc(f.x,f.y,7,0,Math.PI*2);ctx.fill();
     if(f.carry){ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(f.x,f.y-6,3,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle='#300';ctx.fillRect(f.x-6,f.y-12,12,3);
+    ctx.fillStyle='#0f0';ctx.fillRect(f.x-6,f.y-12,12*(f.HP/f.maxHP),3);
   }
 
   // 基地
