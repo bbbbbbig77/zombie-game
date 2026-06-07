@@ -155,7 +155,7 @@ function drawDude(cx,cy,z){
   let isF=ch.gender=='female';
   let WID=48, HGT=72; // 48x72像素网格
   let px=(screen==='home')?Math.min(H*0.75/HGT,W*0.8/WID):Math.min(H*0.4/HGT,W*0.5/WID);
-  let grid=Array(HGT).fill().map(()=>Array(WID).fill(0));
+  let grid=[];for(let r=0;r<HGT;r++){grid[r]=[];for(let c=0;c<WID;c++)grid[r][c]=0}
 
   function box(x,y,w,h,v){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<HGT&&c>=0&&c<WID)grid[r][c]=v}
   function S(x,y,w,h){box(x,y,w,h,1)}  // skin
