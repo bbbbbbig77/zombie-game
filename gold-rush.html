@@ -165,7 +165,7 @@ function update(){
       else{if(f.side==='player')gold+=8;else enemyGold+=6;f.carry=false}
     }
   }
-  farmers=farmers.filter(f=>f.HP>0&&(f.side==='player'||Math.random()>0.003));
+  farmers=farmers.filter(f=>f.HP>0);
 
   // 兵营造兵
   for(let b of barracks){
