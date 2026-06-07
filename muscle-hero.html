@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>肌肉英雄 - 从细狗到猛男</title>
+<title>肌肉英雄 - 撸树赚钱</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#1a1a2e;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;position:fixed;width:100%;height:100%;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
+body{background:#1a1a2e;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;position:fixed;width:100%;height:100%;font-family:'PingFang SC','Microsoft YaHei',sans-serif}
 canvas{display:block}
 </style>
 </head>
@@ -20,278 +20,329 @@ function resize(){canvas.width=innerWidth;canvas.height=innerHeight;W=canvas.wid
 resize();window.addEventListener('resize',resize);
 
 // ========== 游戏数据 ==========
-let gold=0;
-let screen='home';
-let characterIndex=0;
-let particles=[];
-let buttons=[];
+let gold=0, screen='home', characterIndex=0, particles=[], buttons=[];
+let muscles={upper:0,chest:0,abs:0,legs:0};
+let xpData={upper:0,chest:0,abs:0,legs:0}, xpToNext=80;
 
-// 肌肉群
-let muscles={upper:0, chest:0, abs:0, legs:0}; // 0-100
-let xpData={upper:0, chest:0, abs:0, legs:0};
-let xpToNext=80;
+// 角色位置 & 移动
+let player={x:0,y:0,tx:0,ty:0,moving:false,speed:2.5};
+let joystickActive=false, joystickId=null, joystickBaseX=0,joystickBaseY=0,joystickDx=0,joystickDy=0;
 
-// 树类型
+// 树
 const TREE_TYPES=[
-  {name:'🌱小树苗', hp:25, gold:12, color:'#6b8a3a', r:18, xp:4},
-  {name:'🌲松树', hp:70, gold:35, color:'#4a7a2a', r:26, xp:8},
-  {name:'🌳橡树', hp:180, gold:90, color:'#6a5a2a', r:34, xp:16},
-  {name:'🪵铁木', hp:450, gold:220, color:'#7a5a2a', r:42, xp:35},
-  {name:'🔥神木', hp:1200, gold:600, color:'#ee6644', r:52, xp:70},
+  {name:'🌱小树苗',hp:25,gold:12,color:'#6b8a3a',r:22,xp:4},
+  {name:'🌲松树',hp:70,gold:35,color:'#4a7a2a',r:30,xp:8},
+  {name:'🌳橡树',hp:180,gold:90,color:'#6a5a2a',r:38,xp:16},
+  {name:'🪵铁木',hp:450,gold:220,color:'#7a5a2a',r:46,xp:35},
+  {name:'🔥神木',hp:1200,gold:600,color:'#ee6644',r:55,xp:70},
+];
+let forestTrees=[], chopping=null, chopCD=0, chopGain=0;
+const CHOP_INT=32;
+
+const chars=[
+  {name:'呆萌小明',emoji:'😶',color:'#ffcc88'},
+  {name:'丑萌老王',emoji:'😜',color:'#ccaa77'},
+  {name:'帅气阿强',emoji:'😎',color:'#ddbb88'},
 ];
 
-// 森林
-let forestTrees=[];
-let choppingTree=null; // 正在砍的树引用
-let chopCD=0;
-const CHOP_INTERVAL=35;
-
-// 角色
-const characters=[
-  {name:'呆萌小明', emoji:'😶', color:'#ffcc88', desc:'懵懵的，但很努力'},
-  {name:'丑萌老王', emoji:'😜', color:'#ccaa77', desc:'丑到深处自然萌'},
-  {name:'帅气阿强', emoji:'😎', color:'#ddbb88', desc:'天生底子好一丢丢'},
-];
-
-// ========== 按钮 ==========
-function btn(x,y,w,h,text,color,cb){
-  buttons.push({x,y,w,h,text,color,cb,visible:()=>true});
-}
-
-// ========== 生成森林 ==========
+// ========== 森林生成 ==========
 function spawnForest(){
-  forestTrees=[];
-  choppingTree=null;
-  let count=22+Math.floor(gold/40);
-  count=Math.min(count,55);
+  forestTrees=[]; chopping=null; chopCD=0;
+  let count=25+Math.floor(gold/40); count=Math.min(count,55);
   for(let i=0;i<count;i++){
-    let rx,ry,ok=false;
-    for(let tries=0;tries<20;tries++){
-      rx=50+Math.random()*(W-100);
-      ry=50+Math.random()*(H*0.68-30);
-      // 避免挡住下方按钮区
-      if(ry>H*0.72)continue;
-      // 类型
-      let rnd=Math.random(),ti;
-      if(rnd<0.42)ti=0;else if(rnd<0.72)ti=1;else if(rnd<0.88)ti=2;else if(rnd<0.96)ti=3;else ti=4;
+    for(let tries=0;tries<15;tries++){
+      let ti; let rnd=Math.random();
+      if(rnd<0.4)ti=0; else if(rnd<0.7)ti=1; else if(rnd<0.87)ti=2; else if(rnd<0.96)ti=3; else ti=4;
       let tp=TREE_TYPES[ti];
-      let overlap=forestTrees.some(t=>Math.hypot(rx-t.x,ry-t.y)<tp.r+t.r+6);
-      if(!overlap){forestTrees.push({x:rx,y:ry,hp:tp.hp,maxHP:tp.hp,typeIdx:ti,r:tp.r});ok=true;break}
+      let rx=30+Math.random()*(W-60), ry=40+Math.random()*(H*0.7-20);
+      if(Math.hypot(rx-player.x,ry-player.y)<80)continue; // 不挡住出生点
+      let overlap=forestTrees.some(t=>Math.hypot(rx-t.x,ry-t.y)<tp.r+t.r+5);
+      if(!overlap){forestTrees.push({x:rx,y:ry,hp:tp.hp,maxHP:tp.hp,ti,r:tp.r});break}
     }
   }
 }
 
-// ========== 树再生 ==========
-function regrowTrees(){
-  let living=forestTrees.filter(t=>t.hp>0).length;
-  if(living<15&&Math.random()<0.03){ // 树太少时慢慢长新树
-    let ti=Math.random()<0.6?0:(Math.random()<0.8?1:2);
-    let tp=TREE_TYPES[ti];
-    let rx=50+Math.random()*(W-100),ry=50+Math.random()*(H*0.65);
-    let overlap=forestTrees.filter(t=>t.hp>0).some(t=>Math.hypot(rx-t.x,ry-t.y)<tp.r+t.r+8);
-    if(!overlap)forestTrees.push({x:rx,y:ry,hp:tp.hp,maxHP:tp.hp,typeIdx:ti,r:tp.r});
-  }
-}
-
-// ========== 砍树逻辑 ==========
-function chopTree(tree){
+// ========== 砍树 ==========
+function chop(t){
   if(chopCD>0)return;
-  chopCD=CHOP_INTERVAL;
-  // 伤害=基础3+上肢力量加成+胸肌加成
+  chopCD=CHOP_INT;
+  let tp=TREE_TYPES[t.ti];
   let dmg=3+Math.floor(muscles.upper*0.3)+Math.floor(muscles.chest*0.15);
-  tree.hp-=dmg;
-  // 每砍一下得金币(比例于伤害，不超过树剩余价值)
-  let tp=TREE_TYPES[tree.typeIdx];
-  let goldPerHit=Math.floor(tp.gold*(dmg/tp.hp));
-  goldPerHit=Math.max(1,Math.min(goldPerHit,tp.gold-Math.floor(tp.gold*(1-tree.hp/tp.hp))));
-  gold+=goldPerHit;
-  // 微量的上肢经验
+  t.hp-=dmg;
+  let hitGold=Math.max(1,Math.floor(tp.gold*(dmg/tp.hp)));
+  chopGain=hitGold; gold+=hitGold;
   xpData.upper+=tp.xp*0.3;
-  // 粒子
-  for(let i=0;i<3;i++)particles.push({x:tree.x+Math.random()*10,y:tree.y,vx:(Math.random()-0.5)*3,vy:-1-Math.random()*3,life:15,color:'#8b5a2b',r:2+Math.random()*2});
-  if(goldPerHit>5){particles.push({x:tree.x,y:tree.y-10,vx:0,vy:-2,life:18,color:'#ffd700',r:3,text:'+'+goldPerHit})}
-  // 树倒了
-  if(tree.hp<=0){
-    tree.hp=0;
-    choppingTree=null;
-    // 追加经验
-    xpData.upper+=tp.xp*0.7;
-    for(let i=0;i<12;i++)particles.push({x:tree.x,y:tree.y,vx:(Math.random()-0.5)*10,vy:-2-Math.random()*8,life:20,color:'#ffd700',r:3+Math.random()*3});
-  }
+  for(let i=0;i<3;i++)particles.push({x:t.x+Math.random()*8,y:t.y,vx:(Math.random()-0.5)*4,vy:-1-Math.random()*4,life:14,color:'#8b5a2b',r:2+Math.random()*2});
+  if(hitGold>5)particles.push({x:player.x,y:player.y-20,vx:0,vy:-2,life:18,color:'#ffd700',r:0,text:'💰+'+hitGold});
+  if(t.hp<=0){t.hp=0;chopping=null;xpData.upper+=tp.xp*0.7;
+    for(let i=0;i<14;i++)particles.push({x:t.x,y:t.y,vx:(Math.random()-0.5)*12,vy:-3-Math.random()*10,life:22,color:'#ffd700',r:3+Math.random()*4});}
 }
-
-// ========== 升级检查 ==========
-function checkLevelUp(){
+function checkExp(){
   for(let k of Object.keys(xpData)){
-    if(xpData[k]>=xpToNext&&muscles[k]<100){
-      xpData[k]-=xpToNext;
-      muscles[k]=Math.min(100,muscles[k]+4);
-      if(muscles[k]>=100)muscles[k]=100;
-    }
+    if(xpData[k]>=xpToNext&&muscles[k]<100){xpData[k]-=xpToNext;muscles[k]=Math.min(100,muscles[k]+4);xpToNext+=15}
   }
 }
 
-// ========== 屏幕切换 ==========
+// ========== 屏幕 ==========
 function goTo(s){
   screen=s;buttons=[];
-  if(s==='home'){btn(W*0.3,H*0.66,Math.min(180,W*0.4),64,'🪓 撸树赚钱','#4a8',()=>goTo('forest'));btn(W*0.3,H*0.66+72,Math.min(180,W*0.4),64,'🏋️ 撸铁猛干','#48a',()=>goTo('iron'));btn(W*0.3,H*0.66+144,Math.min(180,W*0.4),50,'👤 换人','#888',()=>goTo('select'));}
-  if(s==='select'){for(let i=0;i<3;i++){let bw=Math.min(140,W*0.28);let idx=i;btn(W/2-bw*1.6+i*bw*1.1,H*0.55,bw,80,characters[i].name,'#555',()=>{characterIndex=idx;goTo('home')})}btn(W/2-50,H*0.72,100,40,'← 返回','#555',()=>goTo('home'))}
-  if(s==='forest'){spawnForest();btn(W/2-55,H*0.92,110,38,'← 回主页','#555',()=>goTo('home'));btn(W/2-55,H*0.96,110,28,'🔄 刷新树林','#593',()=>spawnForest())}
-  if(s==='iron'){btn(W/2-70,H*0.65,140,50,'🏗️ 即将开放','#555',null);btn(W/2-50,H*0.78,100,38,'← 返回','#555',()=>goTo('home'))}
-  chopCD=0;choppingTree=null;
+  if(s==='home'){btn(W*.25,H*.66,Math.min(180,W*.5),60,'🪓 撸树赚钱','#4a8',()=>goTo('forest'));btn(W*.25,H*.66+68,Math.min(180,W*.5),60,'🏋️ 撸铁猛干','#48a',()=>goTo('iron'));btn(W*.25,H*.66+136,Math.min(180,W*.5),44,'👤 换人','#888',()=>goTo('select'));}
+  if(s==='select'){for(let i=0;i<3;i++){let bw=Math.min(130,W*.28);let idx=i;btn(W/2-bw*1.6+i*bw*1.1,H*.55,bw,76,chars[i].name,'#555',()=>{characterIndex=idx;goTo('home')})}btn(W/2-50,H*.7,100,38,'← 返回','#555',()=>goTo('home'))}
+  if(s==='forest'){player.x=W/2;player.y=H*.65;spawnForest();btn(W/2-50,H*.94,100,36,'← 回主页','#555',()=>goTo('home'));}
+  if(s==='iron'){btn(W/2-70,H*.65,140,46,'🏗️ 即将开放','#555',null);btn(W/2-50,H*.76,100,36,'← 返回','#555',()=>goTo('home'))}
+  chopCD=0;chopping=null;joystickActive=false;
 }
 
-// ========== 画角色 ==========
-function drawCharacter(cx,cy,scale){
-  let s=scale||1;
-  let m=muscles;
-  let bs=Math.min(45,W*0.12)*s;
-  let bodyW=bs*0.5+m.chest*bs*0.012;
-  let armW=bs*0.15+m.upper*bs*0.008;
-  let legW=bs*0.2+m.legs*bs*0.01;
-  let ch=characters[characterIndex];
+function btn(x,y,w,h,text,color,cb){buttons.push({x,y,w,h,text,color,cb})}
 
+// ========== 画人(大号竖屏版) ==========
+function drawDude(cx,cy,s){
+  let z=s||1; let m=muscles; let ch=chars[characterIndex];
+  let bh=Math.min(90,W*.3)*z; // 身体高度基准
   ctx.save();ctx.translate(cx,cy);
+
+  // 阴影
+  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(0,bh*0.9,bh*0.5+m.legs*bh*0.008,bh*0.08,0,0,Math.PI*2);ctx.fill();
+
   // 腿
-  ctx.fillStyle=ch.color;ctx.fillRect(-bs*0.2,bs*0.6,legW,bs*0.7);ctx.fillRect(bs*0.2-legW,bs*0.6,legW,bs*0.7);
+  let legW=bh*0.15+m.legs*bh*0.012, legH=bh*0.55;
+  let thighW=legW*1.2;
+  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.2-thighW/2,bh*0.38,thighW,legH);
+  ctx.fillStyle=ch.color;ctx.fillRect(bh*0.2-thighW/2,bh*0.38,thighW,legH);
+  // 小腿
+  ctx.fillStyle='#666';ctx.fillRect(-bh*0.2-legW/2,bh*0.85,legW,bh*0.25);
+  ctx.fillStyle='#666';ctx.fillRect(bh*0.2-legW/2,bh*0.85,legW,bh*0.25);
+  // 鞋子
+  ctx.fillStyle='#444';ctx.fillRect(-bh*0.2-legW/2-3,bh*1.08,legW+6,bh*0.1);ctx.fillRect(bh*0.2-legW/2-3,bh*1.08,legW+6,bh*0.1);
+
   // 身体
-  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW,0,bodyW*2,bs*0.65);
-  // 腹肌线
-  if(m.abs>15){ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.lineWidth=1;let n=Math.floor(m.abs/20);for(let i=1;i<=n;i++){ctx.beginPath();ctx.moveTo(-bodyW*0.5,bs*0.15*i);ctx.lineTo(bodyW*0.5,bs*0.15*i);ctx.stroke()}}
-  // 胸肌线
-  if(m.chest>25){ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.beginPath();ctx.moveTo(0,bs*0.05);ctx.lineTo(0,bs*0.35);ctx.stroke()}
-  // 手臂(拿着斧头时更大)
-  let armExtra=screen==='forest'&&choppingTree?1.5:1;
-  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW-armW*armExtra,bs*0.04,armW*armExtra,bs*0.5);ctx.fillRect(bodyW,bs*0.04,armW*armExtra,bs*0.5);
-  // 斧头
-  if(screen==='forest'&&choppingTree){
-    ctx.fillStyle='#888';ctx.fillRect(bodyW+armW*armExtra-5,-bs*0.1,6,bs*0.7);
-    ctx.fillStyle='#aaa';ctx.fillRect(bodyW+armW*armExtra-10,-bs*0.15,16,10);
+  let bodyW=bh*0.3+m.chest*bh*0.012;
+  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW,bh*0.05,bodyW*2,bh*0.45);
+  // 背心纹理
+  ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(-bodyW*0.7,bh*0.1,bodyW*1.4,bh*0.35);
+
+  // 胸肌
+  if(m.chest>10){
+    ctx.fillStyle='rgba(0,0,0,0.12)';ctx.beginPath();ctx.moveTo(0,bh*0.08);ctx.lineTo(0,bh*0.3);ctx.stroke();
+    ctx.fillStyle='rgba(180,140,120,0.4)';ctx.beginPath();ctx.arc(-bodyW*0.25,bh*0.15,bodyW*0.3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(bodyW*0.25,bh*0.15,bodyW*0.3,0,Math.PI*2);ctx.fill();
   }
+  // 腹肌
+  if(m.abs>15){ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1;let n=Math.floor(m.abs/18);for(let i=1;i<=Math.min(n,6);i++){ctx.beginPath();ctx.moveTo(-bodyW*0.6,bh*0.18+bh*0.05*i);ctx.lineTo(bodyW*0.6,bh*0.18+bh*0.05*i);ctx.stroke()}ctx.beginPath();ctx.moveTo(0,bh*0.18);ctx.lineTo(0,bh*0.18+bh*0.05*Math.min(n,6));ctx.stroke()}
+
+  // 手臂
+  let armW=bh*0.1+m.upper*bh*0.01, armH=bh*0.4;
+  // 左臂
+  ctx.fillStyle=ch.color;ctx.fillRect(-bodyW-armW-2,bh*0.06,armW,armH);
+  // 右臂(如果正在砍树挥更高)
+  let armUp=(screen==='forest'&&chopping&&chopCD>CHOP_INT*0.7)?-bh*0.3:0;
+  ctx.fillStyle=ch.color;ctx.fillRect(bodyW+2,bh*0.06+armUp,armW,armH);
+  // 肱二头肌突起
+  if(m.upper>25){
+    ctx.fillStyle='rgba(255,200,150,0.5)';ctx.beginPath();ctx.arc(bodyW+armW/2,bh*0.18+armUp,armW*0.7,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(-bodyW-armW/2,bh*0.18,armW*0.7,0,Math.PI*2);ctx.fill();
+  }
+  // 斧头(右臂上方)
+  if(screen==='forest'&&chopping){
+    ctx.fillStyle='#7a5a3a';ctx.fillRect(bodyW+armW+5,bh*0.05+armUp-bh*0.2,6,bh*0.5);
+    ctx.fillStyle='#999';ctx.fillRect(bodyW+armW-3,bh*0.05+armUp-bh*0.25,22,12);
+  }
+
   // 头
-  let hr=bs*0.42;
-  ctx.fillStyle=ch.color;ctx.beginPath();ctx.arc(0,-bs*0.12,hr,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#000';ctx.font=`${hr*0.7}px monospace`;ctx.textAlign='center';ctx.fillText(ch.emoji,0,-bs*0.1);
+  let hr=bh*0.32;
+  ctx.fillStyle=ch.color;ctx.beginPath();ctx.arc(0,-bh*0.08,hr,0,Math.PI*2);ctx.fill();
+  // 头发
+  ctx.fillStyle='#333';ctx.beginPath();ctx.arc(0,-bh*0.15,hr*1.05,Math.PI,0);ctx.fill();
+  // 脸
+  ctx.fillStyle='#000';ctx.font=`${hr*0.7}px monospace`;ctx.textAlign='center';ctx.fillText(ch.emoji,0,-bh*0.06);
+  // 脖子
+  ctx.fillStyle=ch.color;ctx.fillRect(-bh*0.06,-bh*0.02,bh*0.12,bh*0.1);
+
   ctx.restore();
 }
 
 // ========== 画树 ==========
-function drawForestTree(t){
-  let tp=TREE_TYPES[t.typeIdx];
+function drawTree(t){
+  let tp=TREE_TYPES[t.ti];
   ctx.save();ctx.translate(t.x,t.y);
+  // 树冠阴影
+  ctx.fillStyle='rgba(0,0,0,0.15)';ctx.beginPath();ctx.arc(2,2,tp.r,0,Math.PI*2);ctx.fill();
   // 树干
-  ctx.fillStyle='#8b5a2b';ctx.fillRect(-t.r*0.25,0,t.r*0.5,t.r*1.2);
+  ctx.fillStyle='#7a5a2b';ctx.fillRect(-tp.r*0.22,0,tp.r*0.44,tp.r*1.1);
   // 树冠
-  ctx.fillStyle=tp.color;ctx.beginPath();ctx.arc(0,-t.r*0.3,t.r,0,Math.PI*2);ctx.fill();
-  if(t.typeIdx>=2){ctx.fillStyle='rgba(0,0,0,0.2)';ctx.beginPath();ctx.arc(t.r*0.3,-t.r*0.6,t.r*0.6,0,Math.PI*2);ctx.fill()}
-  if(t.typeIdx>=4){ctx.fillStyle='rgba(255,100,50,0.3)';ctx.beginPath();ctx.arc(0,-t.r*0.5,t.r*1.1,0,Math.PI*2);ctx.fill()}
+  ctx.fillStyle=tp.color;ctx.beginPath();ctx.arc(0,-tp.r*0.25,tp.r,0,Math.PI*2);ctx.fill();
+  if(t.ti>=2){ctx.fillStyle='rgba(0,0,0,0.15)';ctx.beginPath();ctx.arc(tp.r*0.25,-tp.r*0.5,tp.r*0.55,0,Math.PI*2);ctx.fill()}
+  if(t.ti>=4){ctx.fillStyle='rgba(255,100,40,0.2)';ctx.beginPath();ctx.arc(0,-tp.r*0.4,tp.r*1.05,0,Math.PI*2);ctx.fill()}
+  // 选中/砍中动画
+  if(t===chopping&&chopCD>CHOP_INT*0.5){ctx.fillStyle='rgba(255,255,255,0.3)';ctx.beginPath();ctx.arc(0,-tp.r*0.25,tp.r+5,0,Math.PI*2);ctx.fill()}
   // 血条
   if(t.hp>0&&t.hp<t.maxHP){
-    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(-t.r,t.r*1.4,t.r*2,4);
-    ctx.fillStyle=t.hp/t.maxHP>0.5?'#0f0':'#ff0';ctx.fillRect(-t.r,t.r*1.4,t.r*2*(t.hp/t.maxHP),4);
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(-tp.r,tp.r*1.2,tp.r*2,4);
+    ctx.fillStyle=t.hp/t.maxHP>0.5?'#0f0':'#ff0';ctx.fillRect(-tp.r,tp.r*1.2,tp.r*2*(t.hp/t.maxHP),4);
   }
-  // 选中高亮
-  if(t===choppingTree){ctx.strokeStyle='#ff0';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(0,-t.r*0.2,t.r+8,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
+  // 名字
+  if(t.hp>0&&t.hp<t.maxHP){ctx.fillStyle='#fff';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(tp.name,tp.r*0.7,-tp.r*0.6)}
   ctx.restore();
 }
 
 // ========== 更新 ==========
 function update(){
   if(chopCD>0)chopCD--;
-  checkLevelUp();
-  if(screen==='forest'){
-    regrowTrees();
-    // 自动砍树
-    if(choppingTree&&choppingTree.hp>0){
-      if(chopCD<=0)chopTree(choppingTree);
-    }else{choppingTree=null}
+  checkExp();
+  // 角色移动
+  if(joystickActive){
+    let d=Math.hypot(joystickDx,joystickDy);
+    if(d>8){let dx=joystickDx/d,dy=joystickDy/d;player.x+=dx*player.speed;player.y+=dy*player.speed}
   }
+  player.x=Math.max(40,Math.min(W-40,player.x));
+  player.y=Math.max(50,Math.min(H*0.82,player.y));
+
+  if(screen==='forest'){
+    // 树再生
+    if(forestTrees.filter(t=>t.hp>0).length<15&&Math.random()<0.02){
+      let ti=Math.random()<0.5?0:(Math.random()<0.75?1:2);
+      let tp=TREE_TYPES[ti];
+      let rx=30+Math.random()*(W-60),ry=40+Math.random()*(H*0.6);
+      if(!forestTrees.filter(t=>t.hp>0).some(t=>Math.hypot(rx-t.x,ry-t.y)<tp.r+10))forestTrees.push({x:rx,y:ry,hp:tp.hp,maxHP:tp.hp,ti,r:tp.r});
+    }
+
+    // 检测附近树
+    if(chopping&&chopping.hp>0){
+      if(Math.hypot(player.x-chopping.x,player.y-chopping.y)<chopping.r+60){
+        if(chopCD<=0)chop(chopping);
+      }else{chopping=null}
+    }
+    if(!chopping||chopping.hp<=0){
+      chopping=forestTrees.filter(t=>t.hp>0).find(t=>Math.hypot(player.x-t.x,player.y-t.y)<t.r+32)||null;
+    }
+    if(chopping&&chopping.hp<=0)chopping=null;
+  }
+
   // 粒子
-  for(let p of particles){if(p.vx!==undefined){p.x+=p.vx;p.y+=p.vy};p.life--}
+  for(let p of particles){if(p.vx!==undefined){p.x+=p.vx;p.y+=p.vy}p.life--}
   particles=particles.filter(p=>p.life>0);
 }
 
 // ========== 渲染 ==========
 function draw(){
   ctx.clearRect(0,0,W,H);
-  let grad=ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,'#2a3a5a');grad.addColorStop(1,'#1a2a3a');
 
   if(screen==='home'){
-    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(28,W*0.06)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';
-    ctx.fillText('💪 肌肉英雄',W/2,H*0.1);
-    ctx.fillText(characters[characterIndex].name,W/2,H*0.18);
-    drawCharacter(W/2,H*0.48,1.2);
+    let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a3a5a');g.addColorStop(1,'#1a2a3a');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(26,W*.065)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';
+    ctx.fillText('💪 肌肉英雄',W/2,H*.08);
+    ctx.fillText(chars[characterIndex].name,W/2,H*.15);
+    drawDude(W/2,H*.48,1);
     // 肌肉条
     let bars=['upper','chest','abs','legs'],names=['💪上肢','🦾胸肌','🥓腹肌','🦵下肢'];
-    for(let i=0;i<4;i++){let m=muscles[bars[i]];ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='left';ctx.fillText(names[i],W*0.12,H*0.52+i*20);ctx.fillStyle='#333';ctx.fillRect(W*0.28,H*0.512+i*20,W*0.45,10);let c=m>70?'#ff0':(m>40?'#fa0':(m>15?'#f80':'#f60'));ctx.fillStyle=c;ctx.fillRect(W*0.28,H*0.512+i*20,W*0.45*(m/100),10)}
-    ctx.fillStyle='#ffd700';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText('🪙 '+gold,W/2,H*0.64);
+    for(let i=0;i<4;i++){let m=muscles[bars[i]];ctx.fillStyle='#fff';ctx.font='10px monospace';ctx.textAlign='left';ctx.fillText(names[i]+' Lv'+Math.floor(m),W*.12,H*.47+i*18);ctx.fillStyle='#333';ctx.fillRect(W*.4,H*.462+i*18,W*.45,8);ctx.fillStyle=m>70?'#ff0':(m>40?'#fa0':(m>15?'#f80':'#f60'));ctx.fillRect(W*.4,H*.462+i*18,W*.45*(m/100),8)}
+    ctx.fillStyle='#ffd700';ctx.font='bold 15px monospace';ctx.textAlign='center';ctx.fillText('🪙 '+gold,W/2,H*.63);
   }
 
   if(screen==='select'){
     ctx.fillStyle='#1a2a3a';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(22,W*0.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('选择你的肌肉猛男',W/2,H*0.13);
-    for(let i=0;i<3;i++){ctx.save();characterIndex=i;drawCharacter(W*0.25+i*W*0.25,H*0.42,0.9);ctx.restore();ctx.fillStyle=i===characterIndex?'#ff0':'#888';ctx.font=`11px PingFang SC,Microsoft YaHei,sans-serif`;ctx.fillText(characters[i].name,W*0.25+i*W*0.25,H*0.48)}
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(20,W*.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('选人',W/2,H*.12);
+    for(let i=0;i<3;i++){ctx.save();let ci=characterIndex;characterIndex=i;drawDude(W*.25+i*W*.25,H*.42,.7);characterIndex=ci;ctx.restore();ctx.fillStyle=i===characterIndex?'#ff0':'#888';ctx.font='10px PingFang SC,Microsoft YaHei,sans-serif';ctx.fillText(chars[i].name,W*.25+i*W*.25,H*.47)}
   }
 
   if(screen==='forest'){
-    // 森林背景
-    ctx.fillStyle='#2d5a1e';ctx.fillRect(0,0,W,H*0.75);
-    ctx.fillStyle='#5a3a1a';ctx.fillRect(0,H*0.7,W,H*0.05); // 地面
-    ctx.fillStyle='#3a3a1a';ctx.fillRect(0,H*0.75,W,H*0.25); // UI区
+    // 天空
+    let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#4a8ade');g.addColorStop(.5,'#7ab8ff');g.addColorStop(.75,'#3a6a1e');g.addColorStop(1,'#2a4a0e');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     // 远处的树影
-    for(let i=0;i<8;i++){ctx.fillStyle='rgba(0,80,0,0.2)';ctx.beginPath();ctx.arc(W*(0.1+i*0.12),H*0.15,50+Math.sin(i)*20,0,Math.PI*2);ctx.fill()}
+    for(let i=0;i<12;i++){ctx.fillStyle='rgba(0,60,0,.15)';ctx.beginPath();ctx.arc(W*(.05+i*.09),H*.25,40+Math.sin(i*1.5)*25,0,Math.PI*2);ctx.fill()}
+    // 地面
+    ctx.fillStyle='#4a8a2a';ctx.fillRect(0,H*.55,W,H*.45);
+    ctx.fillStyle='#3a6a1a';ctx.fillRect(0,H*.7,W,H*.3);
     // 森林中的树
-    for(let t of forestTrees){if(t.hp<=0)continue;drawForestTree(t)}
-    // 倒下的树(灰色)
-    for(let t of forestTrees){if(t.hp>0)continue;ctx.fillStyle='rgba(100,100,100,0.3)';ctx.fillRect(t.x-t.r*0.3,t.y-t.r*0.5,t.r*0.6,t.r*3);ctx.fillText('🪵',t.x,t.y-5)}
-    // 角色(在森林中)
-    let charX=W*0.25,charY=H*0.6;
-    if(choppingTree){charX=choppingTree.x-40;charY=choppingTree.y+20}
-    drawCharacter(charX,charY,0.7);
+    for(let t of forestTrees){if(t.hp<=0)continue;drawTree(t)}
+    // 倒下的树
+    for(let t of forestTrees){if(t.hp>0)continue;ctx.fillStyle='rgba(100,100,100,.35)';ctx.fillRect(t.x-t.r*.2,t.y-t.r*.3,t.r*.4,t.r*2.5);ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText('🪵',t.x,t.y-3)}
+    // 人物
+    drawDude(player.x,player.y,.85);
     // 粒子
-    for(let p of particles){ctx.globalAlpha=Math.min(1,p.life/20);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();if(p.text){ctx.fillStyle='#ffd700';ctx.font='bold 11px monospace';ctx.fillText(p.text,p.x,p.y-5)}ctx.globalAlpha=1}
-    // 顶部HUD
-    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,W,28);
-    ctx.fillStyle='#ffd700';ctx.font='bold 13px monospace';ctx.textAlign='left';ctx.fillText('🪙'+gold,W*0.02,20);
-    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText('树剩余:'+forestTrees.filter(t=>t.hp>0).length,W/2,20);
-    ctx.fillStyle='#afa';ctx.textAlign='right';ctx.fillText('💪Lv'+muscles.upper,W*0.98,20);
-    // 选中提示
-    if(!choppingTree){ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText('👆 点击一棵树开始砍',W/2,H*0.68)}
-    // 底部信息
-    if(choppingTree){
-      let tp=TREE_TYPES[choppingTree.typeIdx];
-      ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';
-      ctx.fillText('砍伐: '+tp.name+'  每斧💰'+Math.max(1,Math.floor(tp.gold*(Math.floor(3+muscles.upper*0.3+muscles.chest*0.15)/tp.hp))),W/2,H*0.8);
-    }
+    for(let p of particles){ctx.globalAlpha=Math.min(1,p.life/22);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();if(p.text){ctx.fillStyle='#ffd700';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(p.text,p.x,p.y-5)}ctx.globalAlpha=1}
+    // 摇杆
+    if(joystickActive){ctx.globalAlpha=.25;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(joystickBaseX,joystickBaseY,45,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#aaa';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#ccc';ctx.beginPath();ctx.arc(joystickBaseX+joystickDx,joystickBaseY+joystickDy,22,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+    // HUD
+    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,0,W,26);
+    ctx.fillStyle='#ffd700';ctx.font='bold 13px monospace';ctx.textAlign='left';ctx.fillText('🪙'+gold,W*.02,18);
+    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText('🌳'+forestTrees.filter(t=>t.hp>0).length,W/2,18);
+    ctx.fillStyle='#afa';ctx.textAlign='right';ctx.fillText('💪'+muscles.upper,W*.98,18);
+    // 站在树边提示
+    if(!chopping){ctx.fillStyle='rgba(255,255,255,.5)';ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText('👆拖动左边移动人物  走到树边自动砍',W/2,H*.88)}
+    if(chopping&&chopping.hp>0){let tp=TREE_TYPES[chopping.ti];ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(tp.name+' 每斧💰'+Math.max(1,Math.floor(tp.gold*(Math.floor(3+muscles.upper*.3+muscles.chest*.15)/tp.hp))),W/2,H*.88)}
   }
 
   if(screen==='iron'){
     ctx.fillStyle='#1a1a2a';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(22,W*0.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('🏋️ 撸铁猛干',W/2,H*0.3);
-    ctx.fillStyle='#888';ctx.font='13px monospace';ctx.fillText('🏗️ 即将开放！先去撸树赚钱吧',W/2,H*0.5);
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(20,W*.05)}px PingFang SC,Microsoft YaHei,sans-serif`;ctx.textAlign='center';ctx.fillText('🏋️ 撸铁猛干',W/2,H*.3);
+    ctx.fillStyle='#888';ctx.font='12px monospace';ctx.textAlign='center';ctx.fillText('🏗️ 即将开放',W/2,H*.5);
   }
 
-  // 通用按钮
-  for(let b of buttons){ctx.fillStyle=b.color;ctx.globalAlpha=0.85;ctx.fillRect(b.x,b.y,b.w,b.h);ctx.globalAlpha=1;ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1.5;ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(13,b.w*0.12)}px monospace`;ctx.textAlign='center';ctx.fillText(b.text,b.x+b.w/2,b.y+b.h/2+4)}
+  // 按钮
+  for(let b of buttons){ctx.fillStyle=b.color;ctx.globalAlpha=.85;ctx.fillRect(b.x,b.y,b.w,b.h);ctx.globalAlpha=1;ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1.5;ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(12,b.w*.12)}px monospace`;ctx.textAlign='center';ctx.fillText(b.text,b.x+b.w/2,b.y+b.h/2+4)}
 }
 
 // ========== 输入 ==========
-canvas.addEventListener('click',e=>{handle(e.offsetX,e.offsetY)});
-canvas.addEventListener('touchstart',e=>{e.preventDefault();let t=e.touches[0],r=canvas.getBoundingClientRect();handle(t.clientX-r.left,t.clientY-r.top)},{passive:false});
-
-function handle(mx,my){
-  // 森林中点树
-  if(screen==='forest'){
-    let clicked=forestTrees.find(t=>t.hp>0&&Math.hypot(mx-t.x,my-t.y)<t.r+10);
-    if(clicked){choppingTree=clicked;chopCD=0;chopTree(clicked);return}
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  for(let t of e.changedTouches){
+    let x=t.clientX,y=t.clientY;
+    if(screen==='forest'&&x<W*.45){
+      joystickActive=true;joystickId=t.identifier;
+      joystickBaseX=x;joystickBaseY=y;joystickDx=0;joystickDy=0;
+    }
   }
-  // 按钮
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  for(let t of e.changedTouches){
+    if(joystickActive&&t.identifier===joystickId){
+      joystickDx=t.clientX-joystickBaseX;joystickDy=t.clientY-joystickBaseY;
+    }
+  }
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  for(let t of e.changedTouches){
+    if(joystickActive&&t.identifier===joystickId){joystickActive=false;joystickId=null;joystickDx=0;joystickDy=0}
+  }
+  // 非摇杆区域的点击=按钮
+  if(screen==='forest')return; // 森林里按钮处理在touchstart
+});
+
+canvas.addEventListener('click',e=>{
+  if(screen==='forest'&&e.offsetX<W*.45)return; // 摇杆区不处理
+  let mx=e.offsetX,my=e.offsetY;
   for(let b of buttons){if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h&&b.cb){b.cb();return}}
+});
+canvas.addEventListener('touchstart',e=>{
+  // 第二次touchstart处理非摇杆点击
+  for(let t of e.changedTouches){
+    if(!(screen==='forest'&&t.clientX<W*.45)){
+      let r=canvas.getBoundingClientRect();
+      let mx=t.clientX-r.left,my=t.clientY-r.top;
+      for(let b of buttons){if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h&&b.cb){b.cb();return}}
+    }
+  }
+},{passive:false});
+
+// PC键盘
+let keys={};
+window.addEventListener('keydown',e=>{keys[e.key]=true});
+window.addEventListener('keyup',e=>{keys[e.key]=false});
+function updateKeys(){
+  if(screen!=='forest')return;
+  let dx=0,dy=0;
+  if(keys['w']||keys['ArrowUp'])dy=-1;
+  if(keys['s']||keys['ArrowDown'])dy=1;
+  if(keys['a']||keys['ArrowLeft'])dx=-1;
+  if(keys['d']||keys['ArrowRight'])dx=1;
+  if(dx||dy){let d=Math.hypot(dx,dy);player.x+=dx/d*player.speed;player.y+=dy/d*player.speed}
 }
 
-function loop(){update();draw();requestAnimationFrame(loop)}
+function loop(){updateKeys();update();draw();requestAnimationFrame(loop)}
 goTo('home');loop();
 </script>
 </body>
