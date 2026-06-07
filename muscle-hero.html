@@ -53,8 +53,8 @@ const characters=[
 // ========== 按钮 ==========
 let buttons=[];
 
-function btn(x,y,w,h,text,color,action,tip){
-  buttons.push({x,y,w,h,text,color,action,tip,visible:()=>true});
+function btn(x,y,w,h,text,color,cb){
+  buttons.push({x,y,w,h,text,color,cb,visible:()=>true});
 }
 
 // ========== 切换屏幕 ==========
@@ -68,31 +68,33 @@ function goTo(s){screen=s;buttons=[];treeHP=0;
 function setupHomeButtons(){
   let bw=Math.min(200,W*0.42), bh=70, gap=15;
   let cx=W/2, cy=H*0.68;
-  btn(cx-bw-gap/2,cy,bw,bh,'🪓 撸树赚钱','#4a8','tree',()=>goTo('tree'));
-  btn(cx+gap/2,cy,bw,bh,'🏋️ 撸铁猛干','#48a','iron',()=>goTo('iron'));
-  btn(cx-bw-gap/2,cy+bh+12,bw/2-gap/2,50,'🛒 商店','#a84','shop',()=>alert('即将开放'));
-  btn(cx+bw/2+gap/2,cy+bh+12,bw/2-gap/2,50,'👤 换人','#888','select',()=>goTo('select'));
+  btn(cx-bw-gap/2,cy,bw,bh,'🪓 撸树赚钱','#4a8',()=>goTo('tree'));
+  btn(cx+gap/2,cy,bw,bh,'🏋️ 撸铁猛干','#48a',()=>goTo('iron'));
+  btn(cx-bw-gap/2,cy+bh+12,bw/2-gap/2,50,'🛒 商店','#a84',()=>alert('即将开放'));
+  btn(cx+bw/2+gap/2,cy+bh+12,bw/2-gap/2,50,'👤 换人','#888',()=>goTo('select'));
 }
 function setupSelectButtons(){
   for(let i=0;i<3;i++){
     let bw=Math.min(160,W*0.3), x=W/2-bw*1.5+i*bw*1.2;
-    btn(x,H*0.55,bw,90,characters[i].name,'#666','sel'+i,()=>{characterIndex=i;goTo('home')});
+    let idx=i;
+    btn(x,H*0.55,bw,90,characters[i].name,'#666',()=>{characterIndex=idx;goTo('home')});
   }
-  btn(W/2-60,H*0.75,120,45,'← 返回','#555','back',()=>goTo('home'));
+  btn(W/2-60,H*0.75,120,45,'← 返回','#555',()=>goTo('home'));
 }
 function setupTreeButtons(){
   let bw=Math.min(100,W*0.22), startX=W/2-bw*2.5, y=H*0.72;
   for(let i=0;i<5;i++){
     let unlocked=treeMap>=i+1;
-    btn(startX+i*(bw+8),y,bw,60,unlocked?'第'+(i+1)+'关':'🔒','#5a5',unlocked?'treeSel'+i:'locked',()=>{
-      if(unlocked){treeLevel=i+1;startTreeFight()}
+    let lv=i+1;
+    btn(startX+i*(bw+8),y,bw,60,unlocked?'第'+lv+'关':'🔒','#5a5',()=>{
+      if(unlocked){treeLevel=lv;startTreeFight()}
     });
   }
-  btn(W/2-60,H*0.84,120,40,'← 返回','#555','back',()=>goTo('home'));
+  btn(W/2-60,H*0.84,120,40,'← 返回','#555',()=>goTo('home'));
 }
 function setupIronButtons(){
-  btn(W/2-80,H*0.7,160,55,'🏗️ 即将开放','#555','soon',null);
-  btn(W/2-60,H*0.82,120,40,'← 返回','#555','back',()=>goTo('home'));
+  btn(W/2-80,H*0.7,160,55,'🏗️ 即将开放','#555',null);
+  btn(W/2-60,H*0.82,120,40,'← 返回','#555',()=>goTo('home'));
 }
 
 // ========== 开始砍树 ==========
@@ -101,7 +103,7 @@ function startTreeFight(){
   let lv=treeLevels[treeLevel-1];
   treeHP=lv.hp; treeMaxHP=lv.hp; chopTimer=0;
   buttons=[];
-  btn(W/2-60,H*0.85,120,40,'逃跑 💨','#a44','flee',()=>{goTo('tree')});
+  btn(W/2-60,H*0.85,120,40,'逃跑 💨','#a44',()=>{goTo('tree')});
 }
 
 // ========== 更新 ==========
@@ -307,16 +309,15 @@ function draw(){
 
 // ========== 输入 ==========
 canvas.addEventListener('click',e=>{handleInput(e.offsetX,e.offsetY)});
-canvas.addEventListener('touchstart',e=>{e.preventDefault();let t=e.touches[0];handleInput(t.clientX,t.clientY)},{passive:false});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();let t=e.touches[0];let r=canvas.getBoundingClientRect();handleInput(t.clientX-r.left,t.clientY-r.top)},{passive:false});
 
 function handleInput(mx,my){
   // 砍树胜利后点击返回
   if(screen==='treeFight'&&treeHP<=0){goTo('tree');return}
   // 按钮
   for(let b of buttons){
-    if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h&&b.action){
-      if(typeof b.action==='function')b.action();
-      return;
+    if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h&&b.cb){
+      b.cb();return;
     }
   }
 }
