@@ -22,7 +22,8 @@ resize();window.addEventListener('resize',resize);
 // ========== 游戏数据 ==========
 let gold=0, screen='home', characterIndex=0, particles=[], buttons=[];
 let muscles={upper:0,chest:0,abs:0,legs:0};
-let xpData={upper:0,chest:0,abs:0,legs:0}, xpToNext=200;
+let xpData={upper:0,chest:0,abs:0,legs:0};
+function xpNeeded(m){return 30+Math.floor(m*m*0.5);} // 等级平方增长
 
 // 角色位置 & 移动
 let player={x:0,y:0,tx:0,ty:0,moving:false,speed:2.5};
@@ -79,7 +80,8 @@ function chop(t){
 }
 function checkExp(){
   for(let k of Object.keys(xpData)){
-    if(xpData[k]>=xpToNext&&muscles[k]<100){xpData[k]-=xpToNext;muscles[k]=Math.min(100,muscles[k]+1);xpToNext+=30}
+    let need=xpNeeded(muscles[k]);
+    if(xpData[k]>=need&&muscles[k]<100){xpData[k]-=need;muscles[k]=Math.min(100,muscles[k]+1)}
   }
 }
 
@@ -230,7 +232,7 @@ function draw(){
     ctx.fillStyle='#ffd700';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText('🪙 '+gold,W/2,H*.78);
     // 肌肉条放底部
     let bars=['upper','chest','abs','legs'],names=['💪上肢','🦾胸肌','🥓腹肌','🦵下肢'];
-    for(let i=0;i<4;i++){let m=muscles[bars[i]];ctx.fillStyle='#fff';ctx.font='9px monospace';ctx.textAlign='left';ctx.fillText(names[i]+' Lv'+Math.floor(m),W*.06,H*.82+i*17);ctx.fillStyle='#333';ctx.fillRect(W*.35,H*.815+i*17,W*.55,8);ctx.fillStyle=m>70?'#ff0':(m>40?'#fa0':(m>15?'#f80':'#f60'));ctx.fillRect(W*.35,H*.815+i*17,W*.55*(m/100),8)}
+    for(let i=0;i<4;i++){let m=muscles[bars[i]],need=xpNeeded(m),pct=xpData[bars[i]]/need;ctx.fillStyle='#fff';ctx.font='9px monospace';ctx.textAlign='left';ctx.fillText(names[i]+' Lv'+Math.floor(m)+'('+Math.floor(xpData[bars[i]])+'/'+need+')',W*.06,H*.82+i*17);ctx.fillStyle='#333';ctx.fillRect(W*.35,H*.815+i*17,W*.55,8);let col=m>70?'#ff0':(m>40?'#fa0':(m>15?'#f80':'#f60'));ctx.fillStyle=col;ctx.fillRect(W*.35,H*.815+i*17,W*.55*(m/100),8);ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillRect(W*.35,H*.815+i*17,W*.55*pct,4)}
   }
 
   if(screen==='select'){
